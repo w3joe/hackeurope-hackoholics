@@ -2,6 +2,7 @@
 
 import json
 import warnings
+from datetime import datetime
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -68,8 +69,12 @@ def run_module_1b(input_data: dict) -> dict:
             }
 
         system_tpl, user_tpl = _load_prompts()
+        forecast_start_week = datetime.now().strftime("%G-W%V")
         system_prompt = system_tpl.render()
-        user_prompt = user_tpl.render(countries_json=json.dumps(countries, indent=2))
+        user_prompt = user_tpl.render(
+            countries_json=json.dumps(countries, indent=2),
+            forecast_start_week=forecast_start_week,
+        )
 
         llm = _get_llm()
         structured_llm = llm.with_structured_output(Module1BOutput, method="json_schema")

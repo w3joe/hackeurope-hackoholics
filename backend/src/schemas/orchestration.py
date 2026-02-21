@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field
 
 FeasibilityFlag = Literal["FEASIBLE", "CONSTRAINED", "INFEASIBLE"]
 
+# Severity from Module 1B (country risk_level)
+Severity = Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+
 
 class DrugToDeliver(BaseModel):
     """Drug order line item."""
@@ -24,6 +27,10 @@ class ReplenishmentDirective(BaseModel):
     pharmacy_id: str
     pharmacy_name: str
     location: str
+    severity: Severity = Field(
+        ...,
+        description="Country risk level from Module 1B (risk_level): LOW, MEDIUM, HIGH, or CRITICAL",
+    )
     priority_rank: int
     assigned_supplier_id: str
     assigned_supplier_name: str

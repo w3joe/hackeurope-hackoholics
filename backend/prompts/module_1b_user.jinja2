@@ -3,4 +3,6 @@ Analyse the following country-level epidemiological signals and produce a struct
 Input countries (JSON):
 {{ countries_json }}
 
-Return a valid JSON object with a "risk_assessments" array. Each assessment must include: country, risk_level (LOW|MEDIUM|HIGH|CRITICAL), spread_likelihood (0-1), reasoning (2-4 sentences), recommended_disease_focus (array of specific disease names).
+Forecast reference: {{ forecast_start_week }}
+
+Return a valid JSON object with a "risk_assessments" array. Each assessment must include: country, risk_level (LOW|MEDIUM|HIGH|CRITICAL), spread_likelihood (0-1), reasoning (2-4 sentences), recommended_disease_focus (array of specific disease names), twelve_week_forecast (object with weekly_cases_per_100k: array of exactly 12 numbers, forecast_start_week: "{{ forecast_start_week }}").

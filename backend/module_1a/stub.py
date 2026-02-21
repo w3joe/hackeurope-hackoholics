@@ -1,7 +1,7 @@
 """Stub for Module 1A — TDA + Isolation Forest pipeline.
 
-Returns mock country-level anomaly scores for development and testing.
-The real TDA/Isolation Forest implementation will replace this at integration.
+Runs LLM risk analyzer for every pathogen×country, writes llm_risk_output.txt,
+then returns mock country-level anomaly scores for development and testing.
 """
 
 import json
@@ -12,7 +12,10 @@ BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
 
 def run_module_1a() -> dict:
-    """Return mock Module 1A output (countries with anomaly signals)."""
+    """Run LLM risk analyzer, then return mock Module 1A output (countries with anomaly signals)."""
+    from .llm_risk_analyzer import run_llm_risk_analyzer
+    run_llm_risk_analyzer()
+
     mock_path = BACKEND_ROOT / "data" / "module_1a_mock.json"
     if mock_path.exists():
         return json.loads(mock_path.read_text())

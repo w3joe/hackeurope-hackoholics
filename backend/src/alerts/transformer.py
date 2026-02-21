@@ -79,6 +79,19 @@ def _risk_assessments_to_alerts_deterministic(
     return alerts
 
 
+MIN_ALERTS = 1
+MAX_ALERTS = 5
+
+
+def _apply_alert_limits(alerts: list[dict]) -> list[dict]:
+    """Enforce min 1 and max 5 alerts. When trimming, prioritize by severity (urgent > watch > low)."""
+    if not alerts:
+        return alerts
+    severity_order = {"urgent": 0, "watch": 1, "low": 2}
+    sorted_alerts = sorted(alerts, key=lambda a: severity_order.get(a.get("severity", "low"), 2))
+    return sorted_alerts[:MAX_ALERTS]
+
+
 def risk_assessments_to_alerts(risk_assessments: list[dict]) -> list[dict]:
     """
     Transform Module 1B risk_assessments to Alert objects.
@@ -86,6 +99,8 @@ def risk_assessments_to_alerts(risk_assessments: list[dict]) -> list[dict]:
     Uses Crusoe LLM to reformat descriptions and severity; falls back to
     deterministic mapping if LLM fails. Each Alert has: id, affectedStoreIds,
     timestamp, description, severity.
+
+    Produces between 1 and 5 alerts (when risk_assessments are present).
     """
     country_to_stores = _load_country_to_stores()
 
@@ -93,8 +108,9 @@ def risk_assessments_to_alerts(risk_assessments: list[dict]) -> list[dict]:
 
     llm_result = reformat_to_alerts_with_llm(risk_assessments, country_to_stores)
     if llm_result is not None:
-        return llm_result
+        return _apply_alert_limits(llm_result)
 
-    return _risk_assessments_to_alerts_deterministic(
+    alerts = _risk_assessments_to_alerts_deterministic(
         risk_assessments, country_to_stores
     )
+    return _apply_alert_limits(alerts)

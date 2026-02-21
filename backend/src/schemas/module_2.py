@@ -69,6 +69,7 @@ class GapReport(BaseModel):
     pharmacy_id: str
     pharmacy_name: str
     location: str
+    country: str = Field(..., description="Country of the pharmacy (from inventory)")
     critical_gaps: list[CriticalGap]
     total_estimated_restock_cost_usd: float
     overall_readiness_score: float = Field(ge=0, le=1)

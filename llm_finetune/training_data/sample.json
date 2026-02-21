@@ -1,0 +1,16 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an expert epidemiological forecasting assistant. Analyze disease surveillance data and provide structured risk assessments with 12-week forecasts in JSON format."
+    },
+    {
+      "role": "user",
+      "content": "Analyze the following epidemiological data and provide a risk assessment:\n\n**Pathogen:** Influenza\n**Country:** Austria\n\n**Recent Observation (Last 6 Weeks):**\nWeeks: 2023-W50, 2023-W51, 2023-W52, 2024-W01, 2024-W02, 2024-W03\nCases per 100k: 7.3, 9.3, 25.4, 17.3, 18.8, 25.6\n\n**Statistical Forecast Signals:**\n- Holt-Winters forecast (next 12w): 43.6, 54.0, 64.4, 79.2, 90.4, 102.3... (truncated)\n- Risk threshold: 20.5% per 100k\n- High-risk weeks predicted: 12 weeks\n\n**Anomaly Detection (TDA):**\n- Status: normal\n- Trend: H0_falling,H1_rising\n- Number of anomalies: 7\n- Lead time: 7 weeks\n- H0 z-score: 0.17, H1 z-score: -0.36\n\n**Seasonality:**\n- Historical peak weeks (ISO): W1, W46, W47, W49, W50...\n\n**Pattern Analysis:**\n- Last observation week: 2024-W03\n- Residual z-score: 1.46\n- Forecast surprised by actual: False\n- PCA distance z-score: 1.03\n- PCA position: elevated\n- Signal convergence: 2/3\n\nProvide a comprehensive 12-week forecast with risk assessment."
+    },
+    {
+      "role": "assistant",
+      "content": "{\"RiskAssessment\": {\"country\": \"Austria\", \"risk_level\": \"HIGH\", \"spread_likelihood\": 0.65, \"reasoning\": \"Based on normal TDA status with H0 falling and H1 rising trends, strong signal convergence detected. Forecasting 34.0 peak cases per 100k over the next 12 weeks.\", \"recommended_disease_focus\": [\"Influenza\"], \"twelve_week_forecast\": {\"weekly_cases_per_100k\": [30.8, 33.9, 34.0, 24.1, 26.2, 13.5, 13.3, 17.4, 3.9, 6.5, 8.0, 2.4], \"forecast_start_week\": \"2024-W04\"}}}"
+    }
+  ]
+}

@@ -1,3 +1,10 @@
+# Module 1A LLM Risk Analyzer (TDA, Holt-Winters)
+pandas
+numpy
+scikit-learn
+statsmodels
+ripser
+
 # LLM & Orchestration
 langchain>=0.3.0
 langchain-core>=0.3.0
@@ -18,3 +25,4 @@ python-dotenv>=1.0.0
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 supabase>=2.10.0
+

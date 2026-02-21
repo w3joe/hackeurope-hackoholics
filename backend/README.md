@@ -86,3 +86,11 @@ When Module 1B completes, risk assessments are transformed into Alerts and pushe
 2. Set env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ALERTS_API_KEY`.
 3. Pipeline automatically pushes alerts when it runs. For external triggers, POST to `POST /internal/alerts` with `X-API-Key` and body `{"risk_assessments": [...]}`.
 4. Frontend: subscribe to `postgres_changes` on `alerts` (INSERT). Row columns match Alert interface: `id`, `affectedStoreIds`, `timestamp`, `description`, `severity`.
+
+## Orchestration Results (Supabase)
+
+When orchestration completes successfully, the result is pushed to Supabase for persistence and real-time access.
+
+1. Run `supabase_orchestration_results.sql` in the Supabase SQL Editor to create the `orchestration_results` table.
+2. With `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` set, the pipeline and `run_orchestration.py` automatically push results on success.
+3. Table columns: `id`, `replenishment_directives` (JSONB), `grand_total_cost_usd`, `overall_system_summary`, `created_at`.

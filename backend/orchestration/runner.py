@@ -4,6 +4,15 @@ import json
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+
+
+def _push_to_supabase(result: dict) -> None:
+    """Push orchestration result to Supabase on success. No-op if not configured."""
+    try:
+        from src.orchestration_push import push_orchestration_to_supabase
+        push_orchestration_to_supabase(result)
+    except Exception:
+        pass
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -149,11 +158,13 @@ def run_orchestration(
         routing_by_pharmacy = {r["pharmacy_id"]: r for r in routing_plan}
 
         if not gap_reports:
-            return {
+            out = {
                 "replenishment_directives": [],
                 "grand_total_cost_usd": 0.0,
                 "overall_system_summary": "No gap reports to process.",
             }
+            _push_to_supabase(out)
+            return out
 
         env = Environment(loader=FileSystemLoader(str(PROMPTS_DIR)))
         system_tpl = env.get_template("orchestration_system.jinja2")
@@ -180,6 +191,11 @@ def run_orchestration(
         all_directives: list[dict] = []
         summaries: list[str] = []
 
+        country_to_severity = {
+            r["country"]: r.get("risk_level", "LOW")
+            for r in risk_assessments
+            if r.get("country")
+        }
         for batch_reports, batch_routing in batches:
             batch_out = _run_orchestration_batch(
                 batch_gap_reports=batch_reports,
@@ -190,6 +206,13 @@ def run_orchestration(
                 llm=structured_llm,
                 module_name=module_name,
             )
+            for d in batch_out["replenishment_directives"]:
+                if "severity" not in d:
+                    pharmacy_country = next(
+                        (r.get("country") for r in batch_reports if r.get("pharmacy_id") == d.get("pharmacy_id")),
+                        None,
+                    )
+                    d["severity"] = country_to_severity.get(pharmacy_country, "LOW")
             all_directives.extend(batch_out["replenishment_directives"])
             summaries.append(batch_out.get("overall_system_summary", ""))
 
@@ -201,11 +224,13 @@ def run_orchestration(
         grand_total = round(sum(d["total_order_cost_usd"] for d in all_directives), 2)
         overall_summary = " ".join(s.strip() for s in summaries if s.strip()) or "Processed replenishment directives."
 
-        return {
+        out = {
             "replenishment_directives": all_directives,
             "grand_total_cost_usd": grand_total,
             "overall_system_summary": overall_summary,
         }
+        _push_to_supabase(out)
+        return out
 
     except Exception as e:
         return {
