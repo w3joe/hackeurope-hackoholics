@@ -1,0 +1,13 @@
+Produce final replenishment directives by reconciling all three upstream inputs.
+
+## Risk Assessments
+{{ risk_assessments_json }}
+
+## Gap Reports
+{{ gap_reports_json }}
+
+## Routing Plan
+{{ routing_plan_json }}
+
+Return a valid JSON object with: replenishment_directives (array), grand_total_cost_usd, overall_system_summary.
+Each directive: pharmacy_id, pharmacy_name, location, priority_rank, assigned_supplier_id, assigned_supplier_name, drugs_to_deliver (drug_name, category, quantity, unit_cost_usd, total_cost_usd, rationale), total_order_cost_usd, delivery_window, feasibility_flag (FEASIBLE|CONSTRAINED|INFEASIBLE), directive_summary.

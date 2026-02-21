@@ -1,0 +1,10 @@
+Analyse inventory gaps for each pharmacy given the inventory dataset and risk context.
+
+## Inventory Dataset
+{{ inventory_json }}
+
+## Risk Context (from upstream risk assessments)
+{{ risk_context_json }}
+
+Produce gap_reports for each pharmacy. Each report must include: pharmacy_id, pharmacy_name, location, critical_gaps (array), total_estimated_restock_cost_usd, overall_readiness_score (0-1), summary.
+Each critical_gap: drug_name, category, issue (UNDERSTOCKED|MISSING|NEAR_EXPIRY), current_quantity, recommended_quantity, urgency, estimated_restock_cost_usd, preferred_supplier_id, preferred_supplier_name, supplier_lead_time_days.

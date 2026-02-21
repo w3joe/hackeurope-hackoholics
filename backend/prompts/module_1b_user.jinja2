@@ -1,0 +1,6 @@
+Analyse the following country-level epidemiological signals and produce a structured risk assessment for each country.
+
+Input countries (JSON):
+{{ countries_json }}
+
+Return a valid JSON object with a "risk_assessments" array. Each assessment must include: country, risk_level (LOW|MEDIUM|HIGH|CRITICAL), spread_likelihood (0-1), reasoning (2-4 sentences), recommended_disease_focus (array of specific disease names).

@@ -1,0 +1,14 @@
+# LLM & Orchestration
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-google-genai>=2.0.0
+langgraph>=0.2.0
+
+# Schema & Validation
+pydantic>=2.0.0
+
+# Prompts
+jinja2>=3.1.0
+
+# Utilities
+python-dotenv>=1.0.0
