@@ -1,11 +1,16 @@
-"""Module 1B — Regional Disease Spread Risk Narrator."""
+"""Module 1B — Country Disease Spread Risk Narrator."""
 
 import json
+import warnings
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+
+# Suppress LangChain/Pydantic structured-output serialization warning
+# (parsed field expects None but receives Module1BOutput; output is correct)
+warnings.filterwarnings("ignore", message=".*field_name='parsed'.*", category=UserWarning)
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 
 # Resolve paths
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
@@ -13,14 +18,23 @@ PROMPTS_DIR = BACKEND_ROOT / "prompts"
 
 
 def _get_llm():
-    from src.config import API_KEY, GEMINI_MODEL, MODULE_1B_TEMPERATURE
+    from src.config import (
+        CRUSOE_API_KEY,
+        CRUSOE_BASE_URL,
+        CRUSOE_MODEL,
+        MODULE_1B_TEMPERATURE,
+    )
 
-    if not API_KEY:
-        raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY must be set")
-    return ChatGoogleGenerativeAI(
-        model=GEMINI_MODEL,
+    if not CRUSOE_API_KEY:
+        raise ValueError("CRUSOE_API_KEY must be set for Module 1B")
+    return ChatOpenAI(
+        model=CRUSOE_MODEL,
         temperature=MODULE_1B_TEMPERATURE,
-        api_key=API_KEY,
+        api_key=CRUSOE_API_KEY,
+        base_url=CRUSOE_BASE_URL,
+        top_p=0.95,
+        frequency_penalty=0,
+        presence_penalty=0,
     )
 
 
@@ -33,9 +47,9 @@ def _load_prompts():
 
 def run_module_1b(input_data: dict) -> dict:
     """
-    Run Module 1B: Regional Disease Spread Risk Narrator.
+    Run Module 1B: Country Disease Spread Risk Narrator.
 
-    Input: { "regions": [...] }
+    Input: { "countries": [...] }
     Output: { "risk_assessments": [...] } or error object
     """
     from src.schemas.module_1b import Module1BOutput
@@ -45,17 +59,17 @@ def run_module_1b(input_data: dict) -> dict:
     input_snapshot = dict(input_data)
 
     try:
-        regions = input_data.get("regions", [])
-        if not regions:
+        countries = input_data.get("countries", [])
+        if not countries:
             return {
                 "module": module_name,
-                "error": "No regions in input",
+                "error": "No countries in input",
                 "input_snapshot": input_snapshot,
             }
 
         system_tpl, user_tpl = _load_prompts()
         system_prompt = system_tpl.render()
-        user_prompt = user_tpl.render(regions_json=json.dumps(regions, indent=2))
+        user_prompt = user_tpl.render(countries_json=json.dumps(countries, indent=2))
 
         llm = _get_llm()
         structured_llm = llm.with_structured_output(Module1BOutput, method="json_schema")
@@ -72,14 +86,14 @@ def run_module_1b(input_data: dict) -> dict:
                     ]
                 )
 
-            # Validate: ensure all regions present
-            region_ids_in = {r["region_id"] for r in regions}
-            region_ids_out = {a.region_id for a in response.risk_assessments}
-            missing = region_ids_in - region_ids_out
+            # Validate: ensure all countries present
+            countries_in = {c["country"] for c in countries}
+            countries_out = {a.country for a in response.risk_assessments}
+            missing = countries_in - countries_out
             if missing:
-                validation_errors.append(f"Missing regions in output: {missing}")
+                validation_errors.append(f"Missing countries in output: {missing}")
                 if retry:
-                    user_prompt += f"\n\n[RETRY] Validation error: {validation_errors[-1]}. Include assessments for ALL input regions."
+                    user_prompt += f"\n\n[RETRY] Validation error: {validation_errors[-1]}. Include assessments for ALL input countries."
                     continue
                 else:
                     log_llm_call(

@@ -51,48 +51,31 @@ def _validate_cost_arithmetic(output: dict) -> list[str]:
     return errors
 
 
-def run_orchestration(
+def _run_orchestration_batch(
+    batch_gap_reports: list[dict],
+    batch_routing_plan: list[dict],
     risk_assessments: list[dict],
-    gap_reports: list[dict],
-    routing_plan: list[dict],
+    system_prompt: str,
+    user_tpl,
+    llm,
+    module_name: str,
 ) -> dict:
-    """
-    Run Final Orchestration Agent.
-
-    Inputs from Module 1B, Module 2, Module 3.
-    Output: replenishment_directives + grand_total_cost_usd + overall_system_summary
-    """
-    from src.schemas.orchestration import OrchestrationOutput
+    """Run orchestration for a single batch. Returns dict with replenishment_directives, grand_total_cost_usd, overall_system_summary. Retries on parse/invoke errors."""
     from src.utils.logging import Timer, log_llm_call
 
-    module_name = "orchestration"
-    input_snapshot = {
-        "risk_assessments": risk_assessments,
-        "gap_reports": gap_reports,
-        "routing_plan": routing_plan,
-    }
+    user_prompt = user_tpl.render(
+        risk_assessments_json=json.dumps(risk_assessments, indent=2),
+        gap_reports_json=json.dumps(batch_gap_reports, indent=2),
+        routing_plan_json=json.dumps(batch_routing_plan, indent=2),
+    )
 
-    try:
-        env = Environment(loader=FileSystemLoader(str(PROMPTS_DIR)))
-        system_tpl = env.get_template("orchestration_system.jinja2")
-        user_tpl = env.get_template("orchestration_user.jinja2")
-        system_prompt = system_tpl.render()
-        user_prompt = user_tpl.render(
-            risk_assessments_json=json.dumps(risk_assessments, indent=2),
-            gap_reports_json=json.dumps(gap_reports, indent=2),
-            routing_plan_json=json.dumps(routing_plan, indent=2),
-        )
+    last_error = None
+    for attempt in range(3):
+        retry = attempt > 0
 
-        llm = _get_llm()
-        structured_llm = llm.with_structured_output(
-            OrchestrationOutput, method="json_schema"
-        )
-
-        for attempt in range(2):
-            retry = attempt > 0
-
+        try:
             with Timer() as timer:
-                response = structured_llm.invoke(
+                response = llm.invoke(
                     [
                         SystemMessage(content=system_prompt),
                         HumanMessage(content=user_prompt),
@@ -106,7 +89,6 @@ def run_orchestration(
                 user_prompt += f"\n\n[RETRY] Cost validation errors: {'; '.join(validation_errors)}. Ensure quantity*unit_cost_usd=total_cost_usd per drug, and sums match total_order_cost_usd and grand_total_cost_usd."
                 continue
 
-            # Post-correct cost arithmetic
             for d in output["replenishment_directives"]:
                 order_total = 0.0
                 for dr in d.get("drugs_to_deliver", []):
@@ -127,6 +109,103 @@ def run_orchestration(
                 validation_errors=validation_errors if validation_errors else None,
             )
             return output
+
+        except Exception as e:
+            last_error = e
+            if attempt < 2 and ("parse" in str(e).lower() or "completion" in str(e).lower() or "output" in str(e).lower()):
+                continue
+            raise
+
+    raise last_error
+
+
+def run_orchestration(
+    risk_assessments: list[dict],
+    gap_reports: list[dict],
+    routing_plan: list[dict],
+    batch_size: int | None = None,
+) -> dict:
+    """
+    Run Final Orchestration Agent.
+
+    Inputs from Module 1B, Module 2, Module 3.
+    Processes in batches (same size as Module 2) with concurrency.
+    Output: replenishment_directives + grand_total_cost_usd + overall_system_summary
+    """
+    from src.config import ORCHESTRATION_BATCH_SIZE
+    from src.schemas.orchestration import OrchestrationOutput
+
+    module_name = "orchestration"
+    input_snapshot = {
+        "risk_assessments": risk_assessments,
+        "gap_reports": gap_reports,
+        "routing_plan": routing_plan,
+    }
+
+    try:
+        effective_batch_size = batch_size if batch_size is not None else ORCHESTRATION_BATCH_SIZE
+        effective_batch_size = max(1, effective_batch_size)
+
+        routing_by_pharmacy = {r["pharmacy_id"]: r for r in routing_plan}
+
+        if not gap_reports:
+            return {
+                "replenishment_directives": [],
+                "grand_total_cost_usd": 0.0,
+                "overall_system_summary": "No gap reports to process.",
+            }
+
+        env = Environment(loader=FileSystemLoader(str(PROMPTS_DIR)))
+        system_tpl = env.get_template("orchestration_system.jinja2")
+        user_tpl = env.get_template("orchestration_user.jinja2")
+        system_prompt = system_tpl.render()
+
+        llm = _get_llm()
+        structured_llm = llm.with_structured_output(
+            OrchestrationOutput, method="json_schema"
+        )
+
+        # Split into batches
+        batches: list[tuple[list[dict], list[dict]]] = []
+        for i in range(0, len(gap_reports), effective_batch_size):
+            batch_reports = gap_reports[i : i + effective_batch_size]
+            batch_pharmacy_ids = [r["pharmacy_id"] for r in batch_reports]
+            batch_routing = [
+                routing_by_pharmacy[pid]
+                for pid in batch_pharmacy_ids
+                if pid in routing_by_pharmacy
+            ]
+            batches.append((batch_reports, batch_routing))
+
+        all_directives: list[dict] = []
+        summaries: list[str] = []
+
+        for batch_reports, batch_routing in batches:
+            batch_out = _run_orchestration_batch(
+                batch_gap_reports=batch_reports,
+                batch_routing_plan=batch_routing,
+                risk_assessments=risk_assessments,
+                system_prompt=system_prompt,
+                user_tpl=user_tpl,
+                llm=structured_llm,
+                module_name=module_name,
+            )
+            all_directives.extend(batch_out["replenishment_directives"])
+            summaries.append(batch_out.get("overall_system_summary", ""))
+
+        # Reassign priority_rank globally (by total_order_cost desc = highest cost first)
+        all_directives.sort(key=lambda d: d.get("total_order_cost_usd", 0), reverse=True)
+        for rank, d in enumerate(all_directives, start=1):
+            d["priority_rank"] = rank
+
+        grand_total = round(sum(d["total_order_cost_usd"] for d in all_directives), 2)
+        overall_summary = " ".join(s.strip() for s in summaries if s.strip()) or "Processed replenishment directives."
+
+        return {
+            "replenishment_directives": all_directives,
+            "grand_total_cost_usd": grand_total,
+            "overall_system_summary": overall_summary,
+        }
 
     except Exception as e:
         return {

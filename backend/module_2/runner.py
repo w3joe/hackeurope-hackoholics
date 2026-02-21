@@ -1,6 +1,8 @@
 """Module 2 — Pharmacy Inventory Gap Analyzer."""
 
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -12,7 +14,12 @@ PROMPTS_DIR = BACKEND_ROOT / "prompts"
 
 
 def _get_llm():
-    from src.config import API_KEY, GEMINI_MODEL, MODULE_2_TEMPERATURE
+    from src.config import (
+        API_KEY,
+        GEMINI_MODEL,
+        MODULE_2_REQUEST_TIMEOUT,
+        MODULE_2_TEMPERATURE,
+    )
 
     if not API_KEY:
         raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY must be set")
@@ -20,6 +27,7 @@ def _get_llm():
         model=GEMINI_MODEL,
         temperature=MODULE_2_TEMPERATURE,
         api_key=API_KEY,
+        timeout=MODULE_2_REQUEST_TIMEOUT,
     )
 
 
@@ -63,7 +71,7 @@ def _run_batch(
     llm,
     module_name: str,
 ) -> list[dict]:
-    """Run gap analysis for a single batch of pharmacies. Returns gap_reports for that batch."""
+    """Run gap analysis for a single batch of pharmacies. Returns gap_reports for that batch. Retries on parse/invoke errors."""
     from src.utils.logging import Timer, log_llm_call
 
     user_prompt = user_tpl.render(
@@ -71,42 +79,66 @@ def _run_batch(
         risk_context_json=json.dumps(risk_context, indent=2),
     )
 
-    for attempt in range(2):
+    from src.config import MODULE_2_REQUEST_TIMEOUT
+
+    last_error = None
+    for attempt in range(3):  # Up to 3 attempts (initial + 2 retries)
         retry = attempt > 0
 
-        with Timer() as timer:
-            response = llm.invoke(
-                [
-                    SystemMessage(content=system_prompt),
-                    HumanMessage(content=user_prompt),
-                ]
+        try:
+            with Timer() as timer:
+                with ThreadPoolExecutor(max_workers=1) as ex:
+                    future = ex.submit(
+                        llm.invoke,
+                        [
+                            SystemMessage(content=system_prompt),
+                            HumanMessage(content=user_prompt),
+                        ],
+                    )
+                    response = future.result(timeout=MODULE_2_REQUEST_TIMEOUT)
+
+            validation_errors = []
+            for report in response.gap_reports:
+                validation_errors.extend(_validate_cost_arithmetic(report.model_dump()))
+
+            if validation_errors and not retry:
+                user_prompt += f"\n\n[RETRY] Cost validation errors: {'; '.join(validation_errors)}. Ensure total_estimated_restock_cost_usd equals the sum of estimated_restock_cost_usd across all critical_gaps."
+                continue
+
+            output = response.model_dump()
+            for report in output["gap_reports"]:
+                total = sum(
+                    g.get("estimated_restock_cost_usd", 0) for g in report.get("critical_gaps", [])
+                )
+                report["total_estimated_restock_cost_usd"] = round(total, 2)
+
+            log_llm_call(
+                module=module_name,
+                latency_ms=timer.elapsed_ms,
+                retry_triggered=retry,
+                validation_errors=validation_errors if validation_errors else None,
             )
+            return output["gap_reports"]
 
-        validation_errors = []
-        for report in response.gap_reports:
-            validation_errors.extend(_validate_cost_arithmetic(report.model_dump()))
-
-        if validation_errors and not retry:
-            user_prompt += f"\n\n[RETRY] Cost validation errors: {'; '.join(validation_errors)}. Ensure total_estimated_restock_cost_usd equals the sum of estimated_restock_cost_usd across all critical_gaps."
-            continue
-
-        output = response.model_dump()
-        for report in output["gap_reports"]:
-            total = sum(
-                g.get("estimated_restock_cost_usd", 0) for g in report.get("critical_gaps", [])
+        except Exception as e:
+            last_error = e
+            err_str = str(e).lower()
+            retriable = (
+                attempt < 2
+                and (
+                    "parse" in err_str
+                    or "completion" in err_str
+                    or "output" in err_str
+                    or "timeout" in err_str
+                    or "timed out" in err_str
+                )
             )
-            report["total_estimated_restock_cost_usd"] = round(total, 2)
+            if retriable:
+                time.sleep(5)  # Back off before retry
+                continue
+            raise
 
-        log_llm_call(
-            module=module_name,
-            latency_ms=timer.elapsed_ms,
-            retry_triggered=retry,
-            validation_errors=validation_errors if validation_errors else None,
-        )
-        return output["gap_reports"]
-
-    # Should not reach (retry exhausts)
-    return response.model_dump()["gap_reports"]
+    raise last_error
 
 
 def run_module_2(
@@ -117,7 +149,7 @@ def run_module_2(
     """
     Run Module 2: Pharmacy Inventory Gap Analyzer.
 
-    risk_assessments: from Module 1B (region_id, risk_level, recommended_disease_focus)
+    risk_assessments: from Module 1B (country, risk_level, recommended_disease_focus)
     inventory: optional override; otherwise loaded from vaccine_stock_dataset.csv
     batch_size: pharmacies per LLM call. Default from MODULE_2_BATCH_SIZE env (20).
 
@@ -139,12 +171,12 @@ def run_module_2(
 
         risk_context = [
             {
-                "region_id": r.get("region_id"),
+                "country": r.get("country"),
                 "risk_level": r.get("risk_level"),
                 "recommended_disease_focus": r.get("recommended_disease_focus", []),
             }
             for r in risk_assessments
-            if "region_id" in r
+            if "country" in r
         ]
 
         env = Environment(loader=FileSystemLoader(str(PROMPTS_DIR)))
@@ -155,11 +187,18 @@ def run_module_2(
         llm = _get_llm()
         structured_llm = llm.with_structured_output(Module2Output, method="json_schema")
 
+        from src.config import MODULE_2_BATCH_DELAY
+
         all_gap_reports: list[dict] = []
-        for batch_pharmacies in _batches(pharmacies, effective_batch_size):
-            batch_inv = {"pharmacies": batch_pharmacies}
+        batch_list = list(_batches(pharmacies, effective_batch_size))
+
+        for batch_idx, batch_pharmacies in enumerate(batch_list):
+            if batch_idx > 0 and MODULE_2_BATCH_DELAY > 0:
+                time.sleep(MODULE_2_BATCH_DELAY)
+            if len(batch_list) > 1:
+                print(f"Module 2: batch {batch_idx + 1}/{len(batch_list)}...", flush=True)
             reports = _run_batch(
-                batch_inv=batch_inv,
+                batch_inv={"pharmacies": batch_pharmacies},
                 risk_context=risk_context,
                 system_prompt=system_prompt,
                 user_tpl=user_tpl,

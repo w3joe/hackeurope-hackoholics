@@ -1,6 +1,7 @@
 """Load and transform vaccine stock CSV to Module 2 inventory schema."""
 
 import csv
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -12,24 +13,6 @@ DISEASE_CATEGORY = {
     "COVID-19": "respiratory infections",
     "RSV": "respiratory infections",
     "Pneumonia": "respiratory infections",
-}
-
-# Map Country to region_id (aligns with Module 1A R1/R2/R3)
-COUNTRY_TO_REGION = {
-    "Germany": "R1",
-    "UK": "R1",
-    "France": "R1",
-    "Austria": "R2",
-    "Italy": "R2",
-    "Poland": "R2",
-    "Czech Republic": "R2",
-    "Hungary": "R3",
-    "Slovakia": "R3",
-    "Romania": "R3",
-    "Croatia": "R3",
-    "Slovenia": "R3",
-    "Bulgaria": "R3",
-    "Serbia": "R3",
 }
 
 # Default unit cost USD by vaccine type (approximate market rates)
@@ -68,6 +51,7 @@ def _days_until_expiry(expiry_str: str, snapshot_str: str = "2026-02-21") -> int
 
 def load_vaccine_inventory(
     csv_path: Path | None = None,
+    max_pharmacies: int | None = None,
 ) -> dict:
     """
     Load vaccine_stock_dataset.csv and transform to Module 2 inventory schema.
@@ -76,6 +60,9 @@ def load_vaccine_inventory(
     CSV schema: Snapshot_Date, Country, City, Address, Postal_Code, Store_ID,
     Target_Disease, Vaccine_Brand, Manufacturer, Stock_Quantity, Min_Stock_Level,
     Expiry_Date, Storage_Type.
+
+    max_pharmacies: limit pharmacies analyzed (default from MODULE_2_MAX_PHARMACIES=50).
+    Use 0 for no limit. When limited, samples evenly across countries.
     """
     path = csv_path or VACCINE_CSV_PATH
     if not path.exists():
@@ -99,7 +86,7 @@ def load_vaccine_inventory(
                     "pharmacy_id": store_id,
                     "pharmacy_name": (address or f"Store {store_id}")[:60],
                     "location": f"{city}, {country}",
-                    "region_id": COUNTRY_TO_REGION.get(country, "R3"),
+                    "country": country,
                     "stock": [],
                 }
 
@@ -134,4 +121,19 @@ def load_vaccine_inventory(
             }
             pharmacies[store_id]["stock"].append(stock_item)
 
-    return {"pharmacies": list(pharmacies.values())}
+    result = list(pharmacies.values())
+    limit = max_pharmacies if max_pharmacies is not None else int(
+        os.environ.get("MODULE_2_MAX_PHARMACIES", "50") or "50"
+    )
+    if limit > 0 and len(result) > limit:
+        by_country: dict[str, list] = {}
+        for p in result:
+            c = p["country"]
+            by_country.setdefault(c, []).append(p)
+        kept: list[dict] = []
+        per_country = max(2, limit // len(by_country))
+        for c in sorted(by_country.keys()):
+            kept.extend(by_country[c][:per_country])
+        result = kept[:limit]
+
+    return {"pharmacies": result}

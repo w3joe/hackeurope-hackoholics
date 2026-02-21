@@ -9,13 +9,16 @@ backend/
 ├── prompts/                    # Jinja2 prompt templates
 │   ├── module_1b_*.jinja2
 │   ├── module_2_*.jinja2
+│   ├── alerts_reformat_*.jinja2
 │   └── orchestration_*.jinja2
 ├── src/
 │   ├── config.py               # Gemini model config
 │   ├── schemas/                # Pydantic models
+│   ├── alerts/                 # Module 1C: transformer, LLM reformatter, Supabase push
 │   └── utils/
 ├── module_1a/                  # TDA stub (non-LLM)
 ├── module_1b/                  # Regional Disease Spread Risk Narrator (LLM)
+├── module_1c/                  # Risk Assessments → Alerts (LLM + Supabase Realtime)
 ├── module_2/                   # Pharmacy Inventory Gap Analyzer (LLM)
 │   ├── vaccine_stock_dataset.csv
 │   └── loader.py               # CSV to inventory transform
@@ -51,12 +54,18 @@ From the `backend/` directory:
 # Smoke tests (individual modules)
 uv run python scripts/run_module_1a.py
 uv run python scripts/run_module_1b.py
+uv run python scripts/run_module_1c.py     # pushes alerts to Supabase
+uv run python scripts/run_module_1c.py --verify  # push + verify in table
 uv run python scripts/run_module_2.py
 uv run python scripts/run_module_3.py
 uv run python scripts/run_orchestration.py
 
 # Full LangGraph pipeline
 uv run python scripts/run_pipeline.py
+
+# Alerts API (Supabase Realtime push)
+uv run python scripts/run_alerts_api.py
+# or: uv run uvicorn api.main:app --reload --host 0.0.0.0
 ```
 
 ## LLM
@@ -67,4 +76,13 @@ Uses **Gemini 2.5 Flash** via `langchain-google-genai`. Configured in `src/confi
 
 The vaccine dataset CSV (`module_2/vaccine_stock_dataset.csv`) uses schema: `Snapshot_Date, Country, City, Address, Postal_Code, Store_ID, Target_Disease, Vaccine_Brand, Manufacturer, Stock_Quantity, Min_Stock_Level, Expiry_Date, Storage_Type`.
 
-The dataset has 100 stores. Module 2 processes pharmacies in **batches** to avoid context overflow and timeouts. Set `MODULE_2_BATCH_SIZE` (default 20) to control pharmacies per LLM call—e.g. all 100 stores in 5 batches.
+The dataset has 100 stores. Module 2 limits to 50 pharmacies by default (`MODULE_2_MAX_PHARMACIES=50`, use 0 for all), processes in batches of 5 (`MODULE_2_BATCH_SIZE=5`), sequential with per-batch retry. Orchestration uses the same batch size and concurrency.
+
+## Alerts (Supabase Realtime)
+
+When Module 1B completes, risk assessments are transformed into Alerts and pushed to Supabase. The frontend subscribes to the `alerts` table for real-time notifications.
+
+1. Run `supabase_alerts.sql` in the Supabase SQL Editor.
+2. Set env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ALERTS_API_KEY`.
+3. Pipeline automatically pushes alerts when it runs. For external triggers, POST to `POST /internal/alerts` with `X-API-Key` and body `{"risk_assessments": [...]}`.
+4. Frontend: subscribe to `postgres_changes` on `alerts` (INSERT). Row columns match Alert interface: `id`, `affectedStoreIds`, `timestamp`, `description`, `severity`.

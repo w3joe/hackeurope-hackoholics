@@ -8,13 +8,14 @@ from langgraph.graph import END, START, StateGraph
 class PipelineState(TypedDict, total=False):
     """State for the replenishment pipeline."""
 
-    regions: list[dict]
+    countries: list[dict]
     risk_assessments: list[dict]
     gap_reports: list[dict]
     routing_plan: list[dict]
     final_output: dict
     module_1a_output: dict
     module_1b_output: dict
+    module_1c_output: dict
     module_2_output: dict
     module_3_output: dict
     errors: list[dict]
@@ -34,19 +35,28 @@ def module_1a_node(state: PipelineState) -> PipelineState:
     from module_1a import run_module_1a
 
     out = run_module_1a()
-    regions = out.get("regions", [])
-    return {"regions": regions, "module_1a_output": out}
+    countries = out.get("countries", [])
+    return {"countries": countries, "module_1a_output": out}
 
 
 def module_1b_node(state: PipelineState) -> PipelineState:
-    """Run Module 1B — Regional Disease Spread Risk Narrator."""
+    """Run Module 1B — Country Disease Spread Risk Narrator."""
     from module_1b import run_module_1b
 
-    regions = state.get("regions", [])
-    input_data = {"regions": regions}
+    countries = state.get("countries", [])
+    input_data = {"countries": countries}
     out = run_module_1b(input_data)
     risk_assessments = _extract_or_default(out, "risk_assessments", [])
     return {"risk_assessments": risk_assessments, "module_1b_output": out}
+
+
+def module_1c_node(state: PipelineState) -> PipelineState:
+    """Run Module 1C — Transform to Alerts and push to Supabase Realtime."""
+    from module_1c import run_module_1c
+
+    risk_assessments = state.get("risk_assessments", [])
+    out = run_module_1c(risk_assessments)
+    return {"module_1c_output": out}
 
 
 def module_2_node(state: PipelineState) -> PipelineState:
@@ -91,13 +101,15 @@ def create_graph() -> StateGraph:
 
     graph.add_node("module_1a", module_1a_node)
     graph.add_node("module_1b", module_1b_node)
+    graph.add_node("module_1c", module_1c_node)
     graph.add_node("module_2", module_2_node)
     graph.add_node("module_3", module_3_node)
     graph.add_node("orchestration", orchestration_node)
 
     graph.add_edge(START, "module_1a")
     graph.add_edge("module_1a", "module_1b")
-    graph.add_edge("module_1b", "module_2")
+    graph.add_edge("module_1b", "module_1c")
+    graph.add_edge("module_1c", "module_2")
     graph.add_edge("module_2", "module_3")
     graph.add_edge("module_3", "orchestration")
     graph.add_edge("orchestration", END)

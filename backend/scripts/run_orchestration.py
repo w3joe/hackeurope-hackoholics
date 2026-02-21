@@ -9,19 +9,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from module_1a import run_module_1a
 from module_1b import run_module_1b
+from module_1c import run_module_1c
 from module_2 import run_module_2
 from module_3 import run_module_3
 from orchestration import run_orchestration
 
 if __name__ == "__main__":
-    regions = run_module_1a()
-    risk_result = run_module_1b(regions)
+    module_1a_output = run_module_1a()
+    risk_result = run_module_1b(module_1a_output)
     risk_assessments = risk_result.get("risk_assessments", [])
     if risk_result.get("error"):
         risk_assessments = [
-            {"region_id": "R1", "risk_level": "HIGH", "recommended_disease_focus": ["respiratory infections"]},
-            {"region_id": "R2", "risk_level": "MEDIUM", "recommended_disease_focus": ["dengue fever"]},
+            {"country": "Germany", "risk_level": "HIGH", "recommended_disease_focus": ["respiratory infections"]},
+            {"country": "Austria", "risk_level": "MEDIUM", "recommended_disease_focus": ["dengue fever"]},
         ]
+    # Module 1C: push alerts to Supabase Realtime
+    run_module_1c(risk_assessments)
     gap_result = run_module_2(risk_assessments=risk_assessments)
     gap_reports = gap_result.get("gap_reports", [])
     if gap_result.get("error"):

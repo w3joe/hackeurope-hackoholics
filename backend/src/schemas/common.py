@@ -3,11 +3,10 @@
 from pydantic import BaseModel, Field
 
 
-class RegionInput(BaseModel):
-    """Input region from TDA/Isolation Forest pipeline."""
+class CountryInput(BaseModel):
+    """Input country from TDA/Isolation Forest pipeline."""
 
-    region_id: str
-    region_name: str
+    country: str
     anomaly_score: float = Field(ge=0, le=1)
     persistence_shift: float
     flagged: bool
@@ -19,5 +18,5 @@ class RegionInput(BaseModel):
 class Module1AOutput(BaseModel):
     """Module 1A stub output."""
 
-    regions: list[RegionInput]
+    countries: list[CountryInput]
 

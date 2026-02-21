@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke test for Module 1B — Regional Disease Spread Risk Narrator."""
+"""Smoke test for Module 1B — Country Disease Spread Risk Narrator."""
 
 import json
 import sys
@@ -12,6 +12,6 @@ from module_1b import run_module_1b
 
 if __name__ == "__main__":
     # Use Module 1A output as input
-    regions = run_module_1a()
-    result = run_module_1b(regions)
+    module_1a_output = run_module_1a()
+    result = run_module_1b(module_1a_output)
     print(json.dumps(result, indent=2))

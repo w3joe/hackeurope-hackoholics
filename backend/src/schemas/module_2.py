@@ -30,7 +30,7 @@ class Pharmacy(BaseModel):
     pharmacy_id: str
     pharmacy_name: str
     location: str
-    region_id: str
+    country: str
     stock: list[StockItem]
 
 
@@ -43,7 +43,7 @@ class InventoryDataset(BaseModel):
 class RiskContextItem(BaseModel):
     """Risk context from Module 1B (subset for Module 2)."""
 
-    region_id: str
+    country: str
     risk_level: str
     recommended_disease_focus: list[str]
 
