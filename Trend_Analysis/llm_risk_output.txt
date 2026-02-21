@@ -1,0 +1,162 @@
+
+BLOCK A: HISTORICAL ANOMALY RECORD
+
+A1. Holt-Winters Residual Anomalies (past weeks where model was surprised)
+Pathogen: Influenza | Country: Germany | Model: seasonal='add' | AIC=776.9
+Residual std: 4.694 | Risk threshold (p75): 17.65%
+Data quality: no missing weeks — series is complete.
+
+week             observed     fitted   residual   z_score direction
+2022-12-12          54.90      64.57      -9.67     -2.06  DROP
+2022-12-26          45.50      56.80     -11.30     -2.41  DROP
+2023-01-02          19.40      37.57     -18.17     -3.87  DROP
+2023-01-09           9.10      20.34     -11.24     -2.39  DROP
+2023-03-27          15.10      29.10     -14.00     -2.98  DROP
+2023-04-03          28.40      14.40      14.00     +2.98  SURGE
+2024-01-15          46.70      30.70      16.00     +3.41  SURGE
+2025-02-17          61.10      48.80      12.30     +2.62  SURGE
+2025-03-24          40.70      30.20      10.50     +2.24  SURGE
+2025-03-31          24.00      40.00     -16.00     -3.41  DROP
+2025-12-08          36.70      26.07      10.63     +2.26  SURGE
+2025-12-29          42.90      31.77      11.13     +2.37  SURGE
+2026-02-09          42.90      53.66     -10.76     -2.29  DROP
+
+Total past HW anomaly weeks: 13
+
+A2. TDA Topological Anomaly Windows (strict: both>2σ OR solo>3σ)
+Window size: 12 weeks | Total windows computed: 232
+Anomaly logic: (|z0|>2.0 AND |z1|>2.0) OR |z0|>3.0 OR |z1|>3.0
+
+window_end_week        H0_z     H1_z  trigger
+2021-W46              -2.09    +3.96  both>2σ, H1-solo>3σ
+2021-W47              +0.99    +3.72  H1-solo>3σ
+2021-W49              +1.47    +3.89  H1-solo>3σ
+2021-W50              -2.80    +2.80  both>2σ
+2021-W51              -2.66    +4.64  both>2σ, H1-solo>3σ
+2021-W52              -2.21    +2.80  both>2σ
+2022-W01              -2.17    +2.80  both>2σ
+2024-W26              -3.59    -0.36  H0-solo>3σ
+
+Total TDA anomaly windows: 8
+
+A3. SARI/ILI Validation of TDA Anomaly Weeks
+Direction based on 3-week smoothed SARI trend at the anomaly week.
+SARI median (all weeks):          6.30
+SARI median at rising anomalies:  9.85
+SARI median at falling anomalies: 11.50
+ILI median (all weeks):           17.10
+ILI median at rising anomalies:   11.40
+ILI median at falling anomalies:  17.27
+
+week               direction      sari_value    ili_value
+2021-W46           RISING              10.60        24.30
+2021-W47           FALLING             12.60        22.50
+2021-W49           FALLING             15.00        18.35
+2021-W50           FALLING             10.40        16.20
+2021-W51           FALLING              8.40        12.25
+2021-W52           RISING               9.10        10.95
+2022-W01           RISING              10.75        11.85
+2024-W26           RISING               4.30         4.50
+
+A4. Seasonal Pattern — ISO Week Distribution of TDA Anomalies
+Frequency of anomaly window end-weeks by ISO week number:
+(Shows which weeks of the year historically concentrate anomalies)
+
+  ISO week  1: (1)
+  ISO week 26: (1)
+  ISO week 46: (1)
+  ISO week 47: (1)
+  ISO week 49: (1)
+  ISO week 50: (1)
+  ISO week 51: (1)
+  ISO week 52: (1)
+
+BLOCK B: CURRENT STATE (most recent observations)
+
+B1. TDA Entropy Trajectory: Last 8 Windows
+Read the direction of travel: is entropy climbing toward the anomaly threshold?
+Threshold: ±2.0σ (both) | ±3.0σ (solo)
+
+window_end_week        H0_z     H1_z  status
+2025-W52              +0.19    -0.36  normal
+2026-W01              +0.21    -0.36  normal
+2026-W02              +0.49    -0.36  normal
+2026-W03              +0.54    -0.36  normal
+2026-W04              +1.07    -0.36  normal
+2026-W05              +0.56    -0.36  normal
+2026-W06              +0.50    -0.36  normal
+2026-W07              +0.65    -0.36  normal
+
+H0 entropy trend over last 8 windows: RISING  (+0.19 → +0.65)
+H1 entropy trend over last 8 windows: FALLING  (-0.36 → -0.36)
+Most recent window anomalous: NO
+
+B2. PCA Positioning: Last 6 Weeks vs Historical Centroid
+Variance explained by 2 PCs: 63.9%
+Historical mean distance from centroid: 1.763  std: 0.850
+
+week                    PC1      PC2   dist_centroid   dist_z  position
+2026-W02             -2.155    0.553           2.225    +0.54  within normal range
+2026-W03             -2.430    0.913           2.596    +0.98  within normal range
+2026-W04             -2.213    0.837           2.366    +0.71  within normal range
+2026-W05             -2.267    0.525           2.327    +0.66  within normal range
+2026-W06             -2.189   -0.136           2.193    +0.51  within normal range
+2026-W07             -1.805   -0.601           1.902    +0.16  within normal range
+
+B3. Holt-Winters: Most Recent Fitted Residual
+Most recent observed week : 2026-02-09
+Observed positivity       : 42.90%
+Holt-Winters fitted value : 53.66%
+Residual                  : -10.76%
+Residual z-score          : -2.29
+Model currently surprised : YES 
+
+BLOCK C — FUTURE OUTLOOK
+
+C1. Holt-Winters Forecast: Next 12 Weeks
+Pathogen: Influenza | Country: Germany
+Risk flag threshold: >17.65% (historical p75)
+
+week             forecast_% risk_flag
+2026-02-16            43.30  HIGH RISK 
+2026-02-23            39.62  HIGH RISK 
+2026-03-02            40.25  HIGH RISK 
+2026-03-09            36.72  HIGH RISK 
+2026-03-16            36.00  HIGH RISK 
+2026-03-23            34.70  HIGH RISK 
+2026-03-30            34.00  HIGH RISK 
+2026-04-06            24.70  HIGH RISK 
+2026-04-13            23.22  HIGH RISK 
+2026-04-20            26.80  HIGH RISK 
+2026-04-27            26.82  HIGH RISK 
+2026-05-04            22.20  HIGH RISK 
+
+C2. TDA Entropy Trend: Forward Signal
+TDA does not forecast directly. Read the recent entropy trajectory
+to assess whether the system is moving toward or away from anomaly.
+
+Historical avg lead time (from elevation >1.5σ to confirmed anomaly): ~7 weeks
+
+STATUS: Entropy within normal range.
+H0_z=+0.65  H1_z=-0.36
+No imminent topological risk signal from TDA at this time.
+
+C3. Convergence Flags — Weeks Where Both Methods Agree
+Highest-confidence risk: Holt-Winters forecasts HIGH RISK AND TDA signals anomaly/elevation.
+
+forecast_week     hw_positivity tda_context                         confidence
+2026-02-16                43.30  TDA: normal                         (2) HW only
+2026-02-23                39.62  TDA: normal                         (2) HW only
+2026-03-02                40.25  TDA: normal                         (2) HW only
+2026-03-09                36.72  TDA: normal                         (2) HW only
+2026-03-16                36.00  TDA: normal                         (2) HW only
+2026-03-23                34.70  TDA: normal                         (2) HW only
+2026-03-30                34.00  TDA: normal                         (2) HW only
+2026-04-06                24.70  TDA: normal                         (2) HW only
+2026-04-13                23.22  TDA: normal                         (2) HW only
+2026-04-20                26.80  TDA: normal                         (2) HW only
+2026-04-27                26.82  TDA: normal                         (2) HW only
+2026-05-04                22.20  TDA: normal                         (2) HW only
+
+No full convergence found in forecast window.
+This means HW and TDA risk windows do not overlap in the next 12 weeks.
