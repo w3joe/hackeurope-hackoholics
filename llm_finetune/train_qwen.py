@@ -125,7 +125,7 @@ def main(args):
         warmup_ratio=0.1,
         logging_steps=10,
         save_strategy="epoch",
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",  # Changed from evaluation_strategy
         save_total_limit=3,
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
@@ -147,10 +147,7 @@ def main(args):
         args=training_args,
         train_dataset=dataset["train"],
         eval_dataset=dataset["validation"],
-        tokenizer=tokenizer,
-        dataset_text_field="text",
-        max_seq_length=2048,
-        packing=False,
+        processing_class=tokenizer,
     )
 
     # Train

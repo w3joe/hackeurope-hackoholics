@@ -9,5 +9,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from module_1a.llm_risk_analyzer import run_llm_risk_analyzer
 
 if __name__ == "__main__":
-    output_path = run_llm_risk_analyzer()
+    result = run_llm_risk_analyzer()
+    output_path = result[0] if isinstance(result, tuple) else result
     print(f"Done. Output: {output_path}")

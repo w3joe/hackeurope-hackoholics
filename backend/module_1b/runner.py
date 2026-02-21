@@ -50,21 +50,36 @@ def run_module_1b(input_data: dict) -> dict:
     """
     Run Module 1B: Country Disease Spread Risk Narrator.
 
-    Input: { "countries": [...] }
+    Input: { "countries": [...] } or { "risk_assessments": [...] }
+    - If risk_assessments provided and valid, validates and passes through (no LLM).
+    - If countries provided, uses LLM to produce risk_assessments.
     Output: { "risk_assessments": [...] } or error object
     """
-    from src.schemas.module_1b import Module1BOutput
+    from src.schemas.module_1b import Module1BOutput, RiskAssessment
     from src.utils.logging import Timer, log_llm_call
 
     module_name = "module_1b"
     input_snapshot = dict(input_data)
 
     try:
+        # Pass-through: input already in RiskAssessment format from Module 1A
+        risk_assessments = input_data.get("risk_assessments", [])
+        if risk_assessments:
+            validated = []
+            for r in risk_assessments:
+                try:
+                    v = RiskAssessment.model_validate(r)
+                    validated.append(v.model_dump())
+                except Exception:
+                    pass
+            if validated:
+                return {"risk_assessments": validated}
+
         countries = input_data.get("countries", [])
         if not countries:
             return {
                 "module": module_name,
-                "error": "No countries in input",
+                "error": "No countries or risk_assessments in input",
                 "input_snapshot": input_snapshot,
             }
 

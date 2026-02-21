@@ -457,6 +457,88 @@ def run_single_pathogen_country(df_pos, shared, pathogen, country):
     return output_lines
 
 
+def extract_risk_assessments(df_pos=None, shared=None, dfs=None) -> list[dict]:
+    """
+    Extract RiskAssessment-compatible dicts from TDA/Holt-Winters analysis.
+    Aggregates pathogen×country into country-level risk assessments.
+
+    Returns list of dicts matching: country, risk_level, spread_likelihood,
+    reasoning, recommended_disease_focus, twelve_week_forecast.
+    """
+    if dfs is None:
+        dfs = load_data()
+    if shared is None:
+        shared = compute_shared_tda(dfs)
+    if df_pos is None:
+        df_pos = shared['df_pos']
+
+    combos = df_pos.groupby(['pathogen', 'countryname']).size().reset_index()
+    combos = list(combos[['pathogen', 'countryname']].itertuples(index=False))
+
+    by_country: dict[str, list[dict]] = {}
+    for pathogen, country in combos:
+        hw = _fit_holt_winters(df_pos, pathogen, country)
+        if hw['unavailable'] or hw.get('forecast') is None:
+            forecast_vals = [0.0] * FORECAST_WEEKS
+            risk_threshold = 0.0
+            forecast_start = pd.Timestamp.now()
+        else:
+            forecast = hw['forecast']
+            forecast_vals = [float(v) for v in forecast.values]
+            while len(forecast_vals) < FORECAST_WEEKS:
+                forecast_vals.append(0.0)
+            forecast_vals = forecast_vals[:FORECAST_WEEKS]
+            risk_threshold = hw['risk_threshold']
+            forecast_start = forecast.index[0]
+
+        n_risk_weeks = sum(1 for v in forecast_vals if v >= risk_threshold)
+        max_forecast = max(forecast_vals) if forecast_vals else 0.0
+        spread_likelihood = min(1.0, max_forecast / 100.0 if max_forecast > 0 else 0.0)
+
+        if n_risk_weeks >= 4:
+            risk_level = "CRITICAL"
+        elif n_risk_weeks >= 2:
+            risk_level = "HIGH"
+        elif n_risk_weeks >= 1 or spread_likelihood >= 0.2:
+            risk_level = "MEDIUM"
+        else:
+            risk_level = "LOW"
+
+        iso_year, iso_week, _ = forecast_start.isocalendar()
+        forecast_start_week = f"{iso_year}-W{iso_week:02d}"
+
+        assessment = {
+            "country": country,
+            "risk_level": risk_level,
+            "spread_likelihood": round(spread_likelihood, 2),
+            "reasoning": (
+                f"{pathogen} Holt-Winters forecast: {n_risk_weeks} of 12 weeks above p75 threshold ({risk_threshold:.1f}%). "
+                f"Max forecast: {max_forecast:.1f}%. Spread likelihood derived from forecast profile."
+            ),
+            "recommended_disease_focus": [pathogen],
+            "twelve_week_forecast": {
+                "weekly_cases_per_100k": [round(v, 2) for v in forecast_vals],
+                "forecast_start_week": forecast_start_week,
+            },
+        }
+        by_country.setdefault(country, []).append(assessment)
+
+    levels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    result = []
+    for country, assessments in by_country.items():
+        best = max(assessments, key=lambda a: (a["risk_level"] != "LOW", levels.index(a["risk_level"]) if a["risk_level"] in levels else 0, a["spread_likelihood"]))
+        diseases = sorted(set(d for a in assessments for d in a["recommended_disease_focus"]))
+        result.append({
+            "country": country,
+            "risk_level": best["risk_level"],
+            "spread_likelihood": best["spread_likelihood"],
+            "reasoning": best["reasoning"],
+            "recommended_disease_focus": diseases,
+            "twelve_week_forecast": best["twelve_week_forecast"],
+        })
+    return result
+
+
 def run_llm_risk_analyzer(output_path: Path | None = None) -> str:
     """
     Run LLM risk analysis for every pathogen×country combination.
@@ -493,4 +575,5 @@ def run_llm_risk_analyzer(output_path: Path | None = None) -> str:
     full_output = "\n".join(all_lines)
     output_path.write_text(full_output)
     print(f"\nOutput saved to: {output_path}")
-    return str(output_path)
+    risk_assessments = extract_risk_assessments(df_pos=df_pos, shared=shared, dfs=dfs)
+    return str(output_path), risk_assessments

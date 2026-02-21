@@ -1,0 +1,11 @@
+{
+  "model_name": "Qwen/Qwen2.5-3B-Instruct",
+  "num_epochs": 1,
+  "batch_size": 1,
+  "learning_rate": 0.0002,
+  "lora_r": 8,
+  "lora_alpha": 16,
+  "train_samples": 50,
+  "val_samples": 5,
+  "device": "cpu"
+}
