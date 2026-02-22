@@ -23,18 +23,6 @@ Imagine a system that watches disease surveillance data across Europe, spots ris
 
 ---
 
-## Project Structure
-
-```
-hackeurope-hackoholics/
-├── backend/          # FastAPI + LangGraph pipeline (risk, gaps, routing, alerts)
-├── frontend/         # Next.js 16 dashboard (map, alerts, orders)
-├── llm_finetune/     # Qwen2.5-3B fine-tuning (QLoRA, GPU-focused)
-└── Trend_Analysis/   # Epidemiological pipeline (TDA, PCA, Holt-Winters)
-```
-
----
-
 ## Backend
 
 **Purpose:** Run the end‑to‑end replenishment pipeline and expose APIs for the frontend.
