@@ -112,7 +112,21 @@ python train_qwen.py --data_dir training_data --output_dir ./qwen-epi-forecast \
 # 3. Infer / evaluate
 python inference.py --model_path ./qwen-epi-forecast
 python evaluate.py --model_path ./qwen-epi-forecast --test_file training_data/test.jsonl
+
+# 4. Merge LoRA into single model (for backend integration)
+python merge_adapter.py --adapter_path ./qwen-test --output_path ./qwen-epi-forecast-merged
 ```
+
+### Use Fine-Tuned Model in Module 1A
+
+Set `USE_LOCAL_EPI_MODEL=true` in `.env` to replace the heuristic risk extractor with the merged Qwen model:
+
+```bash
+# In backend/.env
+USE_LOCAL_EPI_MODEL=true
+```
+
+Requires `pip install torch transformers` in the backend environment.
 
 For constrained environments, see `llm_finetune/INSTALL_STEP_BY_STEP.md` (minimal install, CPU fallback, Colab).
 

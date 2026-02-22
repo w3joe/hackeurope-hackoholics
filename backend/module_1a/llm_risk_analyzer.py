@@ -539,11 +539,63 @@ def extract_risk_assessments(df_pos=None, shared=None, dfs=None) -> list[dict]:
     return result
 
 
+def _aggregate_llm_assessments_by_country(parsed_outputs: list[dict]) -> list[dict]:
+    """Aggregate pathogen×country LLM outputs into country-level assessments (same as extract_risk_assessments)."""
+    by_country: dict[str, list[dict]] = {}
+    for parsed in parsed_outputs:
+        if not parsed or "RiskAssessment" not in parsed:
+            continue
+        ra = parsed["RiskAssessment"]
+        country = ra.get("country")
+        if not country:
+            continue
+        # Normalize to expected schema
+        twelve = ra.get("twelve_week_forecast", {})
+        weekly = twelve.get("weekly_cases_per_100k", [0.0] * FORECAST_WEEKS)
+        weekly = (weekly + [0.0] * FORECAST_WEEKS)[:FORECAST_WEEKS]
+        assessment = {
+            "country": country,
+            "risk_level": ra.get("risk_level", "LOW"),
+            "spread_likelihood": min(1.0, max(0.0, float(ra.get("spread_likelihood", 0)))),
+            "reasoning": ra.get("reasoning", ""),
+            "recommended_disease_focus": list(ra.get("recommended_disease_focus", [])),
+            "twelve_week_forecast": {
+                "weekly_cases_per_100k": [round(float(v), 2) for v in weekly],
+                "forecast_start_week": twelve.get("forecast_start_week", ""),
+            },
+        }
+        by_country.setdefault(country, []).append(assessment)
+
+    levels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    result = []
+    for country, assessments in by_country.items():
+        best = max(
+            assessments,
+            key=lambda a: (
+                a["risk_level"] != "LOW",
+                levels.index(a["risk_level"]) if a["risk_level"] in levels else 0,
+                a["spread_likelihood"],
+            ),
+        )
+        diseases = sorted(set(d for a in assessments for d in a["recommended_disease_focus"]))
+        result.append({
+            "country": country,
+            "risk_level": best["risk_level"],
+            "spread_likelihood": best["spread_likelihood"],
+            "reasoning": best["reasoning"],
+            "recommended_disease_focus": diseases,
+            "twelve_week_forecast": best["twelve_week_forecast"],
+        })
+    return result
+
+
 def run_llm_risk_analyzer(output_path: Path | None = None) -> str:
     """
     Run LLM risk analysis for every pathogen×country combination.
     Writes output to llm_risk_output.txt in module_1a.
-    Returns the output file path.
+
+    When USE_LOCAL_EPI_MODEL=true, uses merged fine-tuned Qwen model instead of heuristic.
+    Returns (output_path, risk_assessments).
     """
     if output_path is None:
         output_path = Path(__file__).resolve().parent / "llm_risk_output.txt"
@@ -559,21 +611,61 @@ def run_llm_risk_analyzer(output_path: Path | None = None) -> str:
     combos = list(combos.itertuples(index=False))
     print(f"Running analysis for {len(combos)} pathogen×country combinations...")
 
-    all_lines = []
-    for i, (pathogen, country) in enumerate(combos):
-        print(f"  [{i+1}/{len(combos)}] {pathogen} / {country}")
-        sep = [
-            "",
-            "=" * 80,
-            f"PATHOGEN: {pathogen} | COUNTRY: {country}",
-            "=" * 80,
-        ]
-        block = run_single_pathogen_country(df_pos, shared, pathogen, country)
-        all_lines.extend(sep)
-        all_lines.extend(block)
+    # Check if we should use local fine-tuned model
+    try:
+        from src.config import USE_LOCAL_EPI_MODEL, EPI_MODEL_PATH
+    except ImportError:
+        USE_LOCAL_EPI_MODEL = False
+        EPI_MODEL_PATH = ""
 
-    full_output = "\n".join(all_lines)
-    output_path.write_text(full_output)
-    print(f"\nOutput saved to: {output_path}")
-    risk_assessments = extract_risk_assessments(df_pos=df_pos, shared=shared, dfs=dfs)
+    if USE_LOCAL_EPI_MODEL:
+        # Use merged fine-tuned Qwen model
+        import sys
+        backend_root = Path(__file__).resolve().parent.parent
+        project_root = backend_root.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+
+        from llm_finetune.llm_risk_csv import get_inference_records, build_epi_prompt
+        from src.local_epi_model import generate_forecast
+
+        model_path = EPI_MODEL_PATH.strip() or None
+        print("Using local fine-tuned epidemiological model...")
+        records = get_inference_records(df_pos=df_pos, shared=shared, dfs=dfs)
+        parsed_outputs = []
+        for i, record in enumerate(records):
+            print(f"  [{i+1}/{len(records)}] {record.get('pathogen','')} / {record.get('country','')}")
+            prompt = build_epi_prompt(record)
+            parsed = generate_forecast(prompt, model_path=model_path)
+            if parsed:
+                parsed_outputs.append(parsed)
+        risk_assessments = _aggregate_llm_assessments_by_country(parsed_outputs)
+        # Still write text output (from heuristic) for compatibility
+        all_lines = []
+        for i, (pathogen, country) in enumerate(combos):
+            sep = ["", "=" * 80, f"PATHOGEN: {pathogen} | COUNTRY: {country}", "=" * 80]
+            block = run_single_pathogen_country(df_pos, shared, pathogen, country)
+            all_lines.extend(sep)
+            all_lines.extend(block)
+        output_path.write_text("\n".join(all_lines))
+    else:
+        # Heuristic path (original)
+        all_lines = []
+        for i, (pathogen, country) in enumerate(combos):
+            print(f"  [{i+1}/{len(combos)}] {pathogen} / {country}")
+            sep = [
+                "",
+                "=" * 80,
+                f"PATHOGEN: {pathogen} | COUNTRY: {country}",
+                "=" * 80,
+            ]
+            block = run_single_pathogen_country(df_pos, shared, pathogen, country)
+            all_lines.extend(sep)
+            all_lines.extend(block)
+
+        full_output = "\n".join(all_lines)
+        output_path.write_text(full_output)
+        print(f"\nOutput saved to: {output_path}")
+        risk_assessments = extract_risk_assessments(df_pos=df_pos, shared=shared, dfs=dfs)
+
     return str(output_path), risk_assessments

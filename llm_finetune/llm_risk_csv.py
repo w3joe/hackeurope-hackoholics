@@ -16,9 +16,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Allow running as script: python module_1a/llm_risk_csv.py
+# Import from module_1a.llm_risk_analyzer (backend)
+# When run as script: path has project root, backend is sibling of llm_finetune
 if __package__ is None:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+try:
     from module_1a.llm_risk_analyzer import (
         ENTROPY_TRAIL,
         FORECAST_WEEKS,
@@ -28,8 +30,8 @@ if __package__ is None:
         load_data,
         _fit_holt_winters,
     )
-else:
-    from ..backend.module_1a.llm_risk_analyzer import (
+except ImportError:
+    from backend.module_1a.llm_risk_analyzer import (
         ENTROPY_TRAIL,
         FORECAST_WEEKS,
         RISK_PERCENTILE,
@@ -307,6 +309,94 @@ def _get_valid_end_dates(
         out.append(d)
         d += step
     return out
+
+
+def build_epi_prompt(record: dict) -> str:
+    """Build epidemiological instruction prompt from flat record (same format as training)."""
+    high_risk_weeks = (record.get("forecast_hw_high_risk_weeks") or "").split(SEP)
+    seasonal_iso_weeks = (record.get("tda_seasonal_iso_weeks") or "").split(SEP)
+    seasonal_iso_weeks = [int(x) for x in seasonal_iso_weeks if x.strip().isdigit()]
+
+    trailing_weeks = (record.get("trailing_weeks") or "").split(SEP)
+    trailing_values = []
+    for x in (record.get("trailing_values") or "").split(SEP):
+        try:
+            trailing_values.append(float(x))
+        except ValueError:
+            trailing_values.append(0.0)
+    forecast_hw_values = []
+    for x in (record.get("forecast_hw_values") or "").split(SEP):
+        try:
+            forecast_hw_values.append(float(x))
+        except ValueError:
+            forecast_hw_values.append(0.0)
+
+    prompt = f"""Analyze the following epidemiological data and provide a risk assessment:
+
+**Pathogen:** {record.get('pathogen', '')}
+**Country:** {record.get('country', '')}
+
+**Recent Observation (Last 6 Weeks):**
+Weeks: {', '.join(trailing_weeks)}
+Cases per 100k: {', '.join(str(v) for v in trailing_values)}
+
+**Statistical Forecast Signals:**
+- Holt-Winters forecast (next 12w): {', '.join(f'{v:.1f}' for v in forecast_hw_values[:6])}... (truncated)
+- Risk threshold: {record.get('forecast_hw_threshold_pct', 0)}% per 100k
+- High-risk weeks predicted: {len(high_risk_weeks)} weeks
+
+**Anomaly Detection (TDA):**
+- Status: {record.get('tda_status', 'normal')}
+- Trend: {record.get('tda_trend', '')}
+- Number of anomalies: {record.get('tda_n_anomalies', 0)}
+- Lead time: {record.get('tda_lead_weeks', 0)} weeks
+- H0 z-score: {record.get('tda_H0_z', 0)}, H1 z-score: {record.get('tda_H1_z', 0)}
+
+**Seasonality:**
+- Historical peak weeks (ISO): {', '.join(f'W{w}' for w in seasonal_iso_weeks[:5])}{'...' if len(seasonal_iso_weeks) > 5 else ''}
+
+**Pattern Analysis:**
+- Last observation week: {record.get('hw_last_obs_week', '')}
+- Residual z-score: {record.get('hw_residual_z', 0)}
+- Forecast surprised by actual: {record.get('hw_surprised', False)}
+- PCA distance z-score: {record.get('pca_dist_z', 0)}
+- PCA position: {record.get('pca_position', 'normal')}
+- Signal convergence: {record.get('convergence', 0)}/3
+
+Provide a comprehensive 12-week forecast with risk assessment."""
+    return prompt
+
+
+def get_inference_records(
+    df_pos: pd.DataFrame = None,
+    shared: dict = None,
+    dfs: dict = None,
+) -> list[dict]:
+    """
+    Get records for inference (current snapshot, one per pathogen×country).
+    Returns list of flat dicts suitable for building LLM prompts.
+    Used by Module 1A when using local fine-tuned model.
+    """
+    if dfs is None:
+        dfs = load_data()
+    if shared is None:
+        shared = compute_shared_tda(dfs)
+    if df_pos is None:
+        df_pos = shared["df_pos"]
+
+    combos = (
+        df_pos.groupby(["pathogen", "countryname"])
+        .size()
+        .reset_index()[["pathogen", "countryname"]]
+    )
+    combos = list(combos.itertuples(index=False))
+
+    records: list[dict] = []
+    for pathogen, country in combos:
+        r = _build_record(df_pos, shared, pathogen, country)
+        if r is not None:
+            records.append(_record_to_flat_dict(r))
+    return records
 
 
 def run_llm_risk_csv(

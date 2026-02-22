@@ -20,6 +20,11 @@ CRUSOE_BASE_URL = os.environ.get("CRUSOE_BASE_URL", "https://hackeurope.crusoecl
 CRUSOE_MODEL = os.environ.get("CRUSOE_MODEL", "NVFP4/Qwen3-235B-A22B-Instruct-2507-FP4")
 CRUSOE_API_KEY = os.environ.get("CRUSOE_API_KEY")
 
+# Local fine-tuned epidemiological model (Module 1A)
+# When True, Module 1A uses merged Qwen model instead of heuristic extract_risk_assessments
+USE_LOCAL_EPI_MODEL = os.environ.get("USE_LOCAL_EPI_MODEL", "").lower() in ("1", "true", "yes")
+EPI_MODEL_PATH = os.environ.get("EPI_MODEL_PATH", "")  # Default: llm_finetune/qwen-epi-forecast-merged
+
 # Module temperatures per PRD
 MODULE_1B_TEMPERATURE = 0.2
 MODULE_2_TEMPERATURE = 0.1

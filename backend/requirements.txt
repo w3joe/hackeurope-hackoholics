@@ -1,4 +1,5 @@
 # Module 1A LLM Risk Analyzer (TDA, Holt-Winters)
+# Optional: torch, transformers for USE_LOCAL_EPI_MODEL (pip install separately if needed)
 pandas
 numpy
 scikit-learn
