@@ -17,7 +17,7 @@ Imagine a system that watches disease surveillance data across Europe, spots ris
 
 ---
 
-## Architecture Overview
+## Backend Architecture Overview
 
 <img width="727" height="400" alt="image" src="https://github.com/user-attachments/assets/0814bc3a-6be7-44a6-832c-d8af46f8dc69" />
 
@@ -30,7 +30,7 @@ Imagine a system that watches disease surveillance data across Europe, spots ris
 | Module | Role |
 |--------|------|
 | **1A** | TDA + Holt‑Winters risk analysis (non‑LLM); outputs anomaly/forecast blocks per country×pathogen |
-| **1B** | LLM regional disease spread risk narrator |
+| **1B** | LLM regional disease spread risk |
 | **1C** | Risk → Alerts (LLM reformatter) + Supabase Realtime push |
 | **2** | Pharmacy inventory gap analyzer (vaccine stock CSV) |
 | **3** | Logistics routing (closest distributors from Supabase) |
