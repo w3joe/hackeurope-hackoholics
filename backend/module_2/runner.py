@@ -6,8 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = BACKEND_ROOT / "prompts"
@@ -16,15 +16,15 @@ PROMPTS_DIR = BACKEND_ROOT / "prompts"
 def _get_llm():
     from src.config import (
         API_KEY,
-        GEMINI_MODEL,
+        LLM_MODEL,
         MODULE_2_REQUEST_TIMEOUT,
         MODULE_2_TEMPERATURE,
     )
 
     if not API_KEY:
-        raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY must be set")
-    return ChatGoogleGenerativeAI(
-        model=GEMINI_MODEL,
+        raise ValueError("ANTHROPIC_API_KEY must be set")
+    return ChatAnthropic(
+        model=LLM_MODEL,
         temperature=MODULE_2_TEMPERATURE,
         api_key=API_KEY,
         timeout=MODULE_2_REQUEST_TIMEOUT,

@@ -55,7 +55,7 @@ tail -f backend/logs/orchestration_$(date +%Y%m%d).log
 ## Troubleshooting
 
 - **Python not found**: Cron uses a minimal `PATH`. The wrapper adds common paths; if needed, use the full path to your Python in the script, e.g. `/Users/w3joe/Documents/projects/hackeurope-hackoholics/backend/.venv/bin/python` instead of `python3`.
-- **Env vars missing**: The script loads `backend/.env` via `python-dotenv`. Ensure `.env` exists and has `GOOGLE_API_KEY`, `SUPABASE_URL`, etc.
+- **Env vars missing**: The script loads `backend/.env` via `python-dotenv`. Ensure `.env` exists and has `ANTHROPIC_API_KEY`, `SUPABASE_URL`, etc.
 - **Test manually** before relying on cron:
   ```bash
   cd backend && python3 scripts/run_orchestration.py

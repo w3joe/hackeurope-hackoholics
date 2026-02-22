@@ -78,7 +78,7 @@ hackeurope-hackoholics/
 ```bash
 cd backend
 uv venv && uv pip install -r requirements.txt
-export GOOGLE_API_KEY=...
+export ANTHROPIC_API_KEY=...
 uv run python scripts/run_pipeline.py
 uv run uvicorn api.main:app --reload --host 0.0.0.0
 ```
@@ -175,7 +175,7 @@ For constrained environments, see `llm_finetune/INSTALL_STEP_BY_STEP.md` (minima
 
 ## Quick Start
 
-1. **Backend:** `cd backend && uv pip install -r requirements.txt && export GOOGLE_API_KEY=…`
+1. **Backend:** `cd backend && uv pip install -r requirements.txt && export ANTHROPIC_API_KEY=…`
 2. **Frontend:** `cd frontend && pnpm install`
 3. **Supabase:** Run `supabase_*.sql` scripts from `backend/` where applicable
 4. **Pipeline:** `uv run python scripts/run_pipeline.py` (backend)
@@ -187,7 +187,7 @@ For constrained environments, see `llm_finetune/INSTALL_STEP_BY_STEP.md` (minima
 
 | Variable | Description |
 |----------|-------------|
-| `GOOGLE_API_KEY` / `GEMINI_API_KEY` | Gemini for LLM modules |
+| `ANTHROPIC_API_KEY` | Anthropic Claude for LLM modules (Module 2, Orchestration) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | Supabase connection |
 | `ALERTS_API_KEY` | For `/internal/alerts` |
 | `CRUSOE_API_KEY` | Optional override for Module 1B |

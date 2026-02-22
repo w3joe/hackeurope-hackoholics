@@ -11,9 +11,9 @@ if _env_path.exists():
     except ImportError:
         pass
 
-# Gemini 2.5 Flash - uses GOOGLE_API_KEY or GEMINI_API_KEY
-GEMINI_MODEL = "gemini-2.5-flash-lite"
-API_KEY = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+# Anthropic Claude - uses ANTHROPIC_API_KEY
+LLM_MODEL = "claude-3-5-sonnet-20241022"
+API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
 # Crusoe (NVFP4/Qwen3) - Module 1B uses this
 CRUSOE_BASE_URL = os.environ.get("CRUSOE_BASE_URL", "https://hackeurope.crusoecloud.com/v1/")

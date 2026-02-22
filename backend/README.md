@@ -12,7 +12,7 @@ backend/
 │   ├── alerts_reformat_*.jinja2
 │   └── orchestration_*.jinja2
 ├── src/
-│   ├── config.py               # Gemini model config
+│   ├── config.py               # Anthropic model config
 │   ├── schemas/                # Pydantic models
 │   ├── alerts/                 # Module 1C: transformer, LLM reformatter, Supabase push
 │   └── utils/
@@ -39,12 +39,10 @@ uv venv
 uv pip install -r requirements.txt
 ```
 
-2. Set your Gemini API key:
+2. Set your Anthropic API key:
 
 ```bash
-export GOOGLE_API_KEY=your-gemini-api-key
-# or
-export GEMINI_API_KEY=your-gemini-api-key
+export ANTHROPIC_API_KEY=your-anthropic-api-key
 ```
 
 ## Run
@@ -72,7 +70,7 @@ uv run python scripts/run_alerts_api.py
 
 ## LLM
 
-Uses **Gemini 2.5 Flash** via `langchain-google-genai`. Configured in `src/config.py`.
+Uses **Anthropic Claude** via `langchain-anthropic`. Configured in `src/config.py`.
 
 ### Module 2 (Gap Analyzer)
 
