@@ -12,12 +12,22 @@ export interface MapPointPopup {
   takeActionTargetId?: string;
 }
 
+export interface ClosestDistributorPoint {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  distanceKm?: number;
+}
+
 export interface MapPoint {
+  id: string;
   lat: number;
   lng: number;
   label: string;
   color?: string;
   popup?: MapPointPopup;
+  closestDistributors?: ClosestDistributorPoint[];
 }
 
 const MapInner = dynamic(() => import("./map-inner"), { ssr: false });
