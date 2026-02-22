@@ -3,8 +3,10 @@ import { Severity } from "@/lib/types";
 export interface Drug {
   id: string;
   name: string;
+  manufacturer: string;
   currentStock: number;
   suggestedQuantity: number;
+  unitPriceUsd: number;
 }
 
 export interface Branch {

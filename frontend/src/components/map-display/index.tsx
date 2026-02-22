@@ -8,6 +8,8 @@ export interface MapPointPopup {
   address: string;
   severity: import("@/lib/types").Severity;
   drugCount: number;
+  drugNames?: string[];
+  takeActionTargetId?: string;
 }
 
 export interface MapPoint {
