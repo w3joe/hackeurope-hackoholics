@@ -1,4 +1,4 @@
-# HackEurope HackOholics
+# HackEurope Hackoholics
 
 **Preventive Risk-Based Stock Replenishment System**
 
@@ -19,31 +19,7 @@ Imagine a system that watches disease surveillance data across Europe, spots ris
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           HACKOHOLICS PIPELINE                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ECDC Data ──► Trend Analysis ──► llm_risk_output.txt                       │
-│        │              │                      │                               │
-│        │              │     ┌────────────────┴────────────────┐              │
-│        │              │     │  LLM Finetune (GPU)             │              │
-│        │              │     │  Qwen2.5-3B + QLoRA             │              │
-│        │              │     └────────────────┬────────────────┘              │
-│        │              │                      │                               │
-│        ▼              ▼                      ▼                               │
-│   Module 1A (TDA + Holt-Winters) ──► Module 1B (LLM Narrator)                 │
-│                                             │                                │
-│                                             ▼                                │
-│   Module 1C (Alerts) ────────────────► Supabase Realtime ──► Frontend        │
-│                                             │                                │
-│   Module 2 (Inventory Gaps) ───────────────┼──► Module Join                  │
-│   Module 3 (Logistics Routing) ────────────┘         │                      │
-│                                                       ▼                      │
-│                                          Orchestration Agent ──► Directives   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+<img width="727" height="400" alt="image" src="https://github.com/user-attachments/assets/0814bc3a-6be7-44a6-832c-d8af46f8dc69" />
 
 ---
 
