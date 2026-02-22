@@ -23,19 +23,26 @@ Imagine a system that watches disease surveillance data across Europe, spots ris
 
 ---
 
-## Backend
+### Data Ingestion
+- **ECDC Data** — European Centre for Disease Prevention and Control epidemiological data forms the foundation of the pipeline
 
-**Purpose:** Run the end‑to‑end replenishment pipeline and expose APIs for the frontend.
+### Stage 1: Epidemiological Analysis
+- **1A: Topological Data Analysis + Holt-Winters Time Series** — Detects structural patterns in disease spread using TDA, combined with Holt-Winters exponential smoothing for seasonal demand forecasting
+- **1B: Disease Predictive Analysis** — A fine-tuned Qwen2.5-Instruct 3B model (via QLoRA) generates disease outbreak predictions based on the processed time series signals
+- **1C: Alert Generation** — Crusoe-hosted Qwen3-235B synthesises predictions into actionable supply alerts for downstream agents
 
-| Module | Role |
-|--------|------|
-| **1A** | TDA + Holt‑Winters risk analysis (non‑LLM); outputs anomaly/forecast blocks per country×pathogen |
-| **1B** | LLM regional disease spread risk |
-| **1C** | Risk → Alerts (LLM reformatter) + Supabase Realtime push |
-| **2** | Pharmacy inventory gap analyzer (vaccine stock CSV) |
-| **3** | Logistics routing (closest distributors from Supabase) |
-| **Join** | Merges risk, gaps, routing per pharmacy |
-| **Orchestration** | Final LLM agent → replenishment directives |
+### Stage 2: Inventory Gap Analysis
+- **Inventory Gaps (Claude Haiku 4.6)** — Analyses current pharmacy stock levels against predicted demand to identify critical shortfalls
+
+### Stage 3: Distributor Retrieval
+- **Retriever of Closest Distributor Algo** — Haversine-based geospatial algorithm ranks and retrieves the nearest distributors for each pharmacy based on GPS coordinates
+
+### Orchestration Layer
+- **Union Join** — Merges alert signals from the predictive analysis and inventory gap streams
+- **Orchestrator Agent** — Coordinates outputs from all upstream stages to generate a unified distribution recommendation
+
+### Output
+- **Recommended Distribution of Vaccines** — Pharmacy-level vaccine allocation plan optimised by proximity, predicted demand, and current inventory gaps
 
 ### Run
 
