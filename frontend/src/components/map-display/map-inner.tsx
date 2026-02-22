@@ -1,7 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import L from "leaflet";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import {
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Polyline,
+  Popup,
+  TileLayer,
+  useMapEvents,
+} from "react-leaflet";
 import { SeverityBadge } from "../ui/severity-badge";
 import { type MapPoint } from "./index";
 
@@ -32,7 +41,25 @@ function createPinIcon(color: string) {
   });
 }
 
+function ResetDistributorOverlay({
+  onReset,
+}: {
+  onReset: () => void;
+}) {
+  useMapEvents({
+    click: () => {
+      onReset();
+    },
+  });
+
+  return null;
+}
+
 export default function MapInner({ points }: { points: MapPoint[] }) {
+  const [selectedPharmacyId, setSelectedPharmacyId] = useState<string | null>(null);
+  const selectedPoint = points.find((point) => point.id === selectedPharmacyId) ?? null;
+  const distributorPoints = selectedPoint?.closestDistributors ?? [];
+
   if (points.length === 0) {
     return (
       <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
@@ -53,11 +80,21 @@ export default function MapInner({ points }: { points: MapPoint[] }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <ResetDistributorOverlay
+        onReset={() => {
+          setSelectedPharmacyId(null);
+        }}
+      />
       {points.map((point, i) => (
         <Marker
           key={`${point.label}-${i}`}
           position={[point.lat, point.lng]}
           icon={createPinIcon(point.color ?? DEFAULT_COLOR)}
+          eventHandlers={{
+            click: () => {
+              setSelectedPharmacyId(point.id);
+            },
+          }}
         >
           <Popup>
             {point.popup ? (
@@ -99,6 +136,20 @@ export default function MapInner({ points }: { points: MapPoint[] }) {
                     </>
                   )}
                 </p>
+                {point.id === selectedPharmacyId &&
+                (point.closestDistributors?.length ?? 0) > 0 ? (
+                  <div className="mt-2 space-y-1 border-t pt-2 text-xs">
+                    <p className="font-medium">Closest distributors:</p>
+                    {point.closestDistributors?.map((distributor) => (
+                      <p key={`${point.id}-${distributor.id}`}>
+                        {distributor.name}
+                        {typeof distributor.distanceKm === "number"
+                          ? ` (${distributor.distanceKm.toFixed(2)} km)`
+                          : ""}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : (
               point.label
@@ -106,6 +157,48 @@ export default function MapInner({ points }: { points: MapPoint[] }) {
           </Popup>
         </Marker>
       ))}
+      {selectedPoint
+        ? distributorPoints.map((distributor) => (
+            <Polyline
+              key={`line-${selectedPoint.id}-${distributor.id}`}
+              positions={[
+                [selectedPoint.lat, selectedPoint.lng],
+                [distributor.lat, distributor.lng],
+              ]}
+              pathOptions={{
+                color: "#1d4ed8",
+                weight: 2,
+                opacity: 0.7,
+              }}
+            />
+          ))
+        : null}
+      {selectedPoint
+        ? distributorPoints.map((distributor) => (
+            <CircleMarker
+              key={`distributor-${selectedPoint.id}-${distributor.id}`}
+              center={[distributor.lat, distributor.lng]}
+              radius={6}
+              pathOptions={{
+                color: "#1d4ed8",
+                fillColor: "#60a5fa",
+                fillOpacity: 0.95,
+                weight: 2,
+              }}
+            >
+              <Popup>
+                <div className="min-w-[180px] text-xs">
+                  <p className="text-sm font-semibold">{distributor.name}</p>
+                  {typeof distributor.distanceKm === "number" ? (
+                    <p className="text-muted-foreground">
+                      Distance: {distributor.distanceKm.toFixed(2)} km
+                    </p>
+                  ) : null}
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))
+        : null}
     </MapContainer>
   );
 }

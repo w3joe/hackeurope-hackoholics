@@ -1,7 +1,7 @@
 import { OrdersList } from "@/components/orders/orders-list";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { db } from "@/lib/db";
-import { confirmOrders } from "@/lib/db/schema";
+import { confirmOrders, pharmacies } from "@/lib/db/schema";
 import { type ConfirmOrder, toConfirmOrderLineItems } from "@/lib/orders/types";
 import { desc } from "drizzle-orm";
 
@@ -33,6 +33,18 @@ export default async function OrdersPage() {
     orderRows = [];
   }
 
+  let pharmacyRows: { storeId: string; closestDistributors: unknown }[] = [];
+  try {
+    pharmacyRows = await db
+      .select({
+        storeId: pharmacies.storeId,
+        closestDistributors: pharmacies.closestDistributors,
+      })
+      .from(pharmacies);
+  } catch {
+    pharmacyRows = [];
+  }
+
   const orders: ConfirmOrder[] = orderRows.map((row) => ({
     id: row.id,
     storeId: row.storeId,
@@ -42,10 +54,17 @@ export default async function OrdersPage() {
     createdAt: row.createdAt ?? new Date().toISOString(),
   }));
 
+  const closestDistributorsByStore = Object.fromEntries(
+    pharmacyRows.map((row) => [row.storeId, row.closestDistributors]),
+  );
+
   return (
     <main className="flex min-h-screen w-full flex-col gap-4 items-center">
       <SidebarTrigger size="icon-lg" className="m-2 self-start" />
-      <OrdersList orders={orders} />
+      <OrdersList
+        orders={orders}
+        closestDistributorsByStore={closestDistributorsByStore}
+      />
     </main>
   );
 }

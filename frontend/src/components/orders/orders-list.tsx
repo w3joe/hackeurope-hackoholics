@@ -11,6 +11,12 @@ import type { ConfirmOrder, ConfirmOrderLineItem } from "@/lib/orders/types";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+interface ClosestDistributor {
+  id: string;
+  name: string;
+  distanceKm?: number;
+}
+
 function getManufacturerGroups(lineItems: ConfirmOrderLineItem[]) {
   const grouped = new Map<string, ConfirmOrderLineItem[]>();
 
@@ -31,10 +37,69 @@ function toFileSafeToken(value: string): string {
     .slice(0, 64);
 }
 
+function parseClosestDistributors(value: unknown): ClosestDistributor[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const distributors: ClosestDistributor[] = [];
+
+  value.forEach((entry, index) => {
+    if (!entry || typeof entry !== "object") {
+      return;
+    }
+
+    const candidate = entry as Record<string, unknown>;
+    const name = String(candidate.name ?? "").trim();
+    if (!name) {
+      return;
+    }
+
+    const distanceRaw = Number(candidate.distance_km);
+    distributors.push({
+      id: String(candidate.dist_id ?? `${name}-${index}`).trim(),
+      name,
+      distanceKm: Number.isFinite(distanceRaw) ? distanceRaw : undefined,
+    });
+  });
+
+  return distributors;
+}
+
+function pickDistributorForManufacturer(
+  manufacturer: string,
+  distributors: ClosestDistributor[],
+): ClosestDistributor | null {
+  if (distributors.length === 0) {
+    return null;
+  }
+
+  const manufacturerTokens = manufacturer
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 4);
+
+  const matched = distributors.find((distributor) =>
+    manufacturerTokens.some((token) => distributor.name.toLowerCase().includes(token)),
+  );
+  if (matched) {
+    return matched;
+  }
+
+  return [...distributors].sort((left, right) => {
+    const leftDistance =
+      typeof left.distanceKm === "number" ? left.distanceKm : Number.POSITIVE_INFINITY;
+    const rightDistance =
+      typeof right.distanceKm === "number" ? right.distanceKm : Number.POSITIVE_INFINITY;
+    return leftDistance - rightDistance;
+  })[0] ?? null;
+}
+
 function downloadPurchaseOrderPdf(
   order: ConfirmOrder,
   manufacturer: string,
   lineItems: ConfirmOrderLineItem[],
+  selectedDistributor: ClosestDistributor | null,
 ) {
   const doc = new jsPDF();
   const createdAt = new Date(order.createdAt);
@@ -52,8 +117,22 @@ function downloadPurchaseOrderPdf(
   doc.text(`Address: ${order.storeAddress}`, 14, 43);
   doc.text(`Manufacturer: ${manufacturer}`, 14, 49);
 
+  const distanceKm = selectedDistributor?.distanceKm;
+  const emissionsKg =
+    typeof distanceKm === "number" ? Number((distanceKm * 1).toFixed(2)) : null;
+  if (selectedDistributor) {
+    doc.text(`Distributor: ${selectedDistributor.name}`, 14, 55);
+  }
+  doc.text(
+    `Estimated CO2 emissions: ${
+      emissionsKg === null ? "Unknown" : `${emissionsKg.toFixed(2)} kg`
+    }`,
+    14,
+    61,
+  );
+
   autoTable(doc, {
-    startY: 56,
+    startY: 68,
     head: [["Drug", "Requested Qty", "Unit Price (USD)", "Line Total (USD)"]],
     body: lineItems.map((lineItem) => [
       lineItem.drugName,
@@ -79,7 +158,13 @@ function downloadPurchaseOrderPdf(
   doc.save(`purchase-order-${order.id}-${manufacturerToken}.pdf`);
 }
 
-export function OrdersList({ orders }: { orders: ConfirmOrder[] }) {
+export function OrdersList({
+  orders,
+  closestDistributorsByStore,
+}: {
+  orders: ConfirmOrder[];
+  closestDistributorsByStore: Record<string, unknown>;
+}) {
   if (orders.length === 0) {
     return (
       <Card className="mx-4 w-full max-w-5xl shadow-sm">
@@ -113,6 +198,32 @@ export function OrdersList({ orders }: { orders: ConfirmOrder[] }) {
             <CardContent className="flex flex-col gap-4">
               {manufacturerGroups.map(([manufacturer, items]) => (
                 <div key={`${order.id}-${manufacturer}`} className="rounded-md border p-3">
+                  {(() => {
+                    const distributors = parseClosestDistributors(
+                      closestDistributorsByStore[order.storeId],
+                    );
+                    const selectedDistributor = pickDistributorForManufacturer(
+                      manufacturer,
+                      distributors,
+                    );
+                    const co2Kg =
+                      typeof selectedDistributor?.distanceKm === "number"
+                        ? Number((selectedDistributor.distanceKm * 1).toFixed(2))
+                        : null;
+
+                    return (
+                      <>
+                        <p className="mb-1 text-xs text-muted-foreground">
+                          Transport source:{" "}
+                          {selectedDistributor?.name ?? "Unknown distributor"}
+                        </p>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          Estimated CO2 emissions:{" "}
+                          {co2Kg === null ? "Unknown" : `${co2Kg.toFixed(2)} kg`}
+                        </p>
+                      </>
+                    );
+                  })()}
                   <p className="mb-2 text-xs text-muted-foreground">
                     Manufacturer Total (USD):
                     {" "}
@@ -124,7 +235,22 @@ export function OrdersList({ orders }: { orders: ConfirmOrder[] }) {
                     <p className="text-sm font-medium">{manufacturer}</p>
                     <Button
                       size="sm"
-                      onClick={() => downloadPurchaseOrderPdf(order, manufacturer, items)}
+                      onClick={() => {
+                        const distributors = parseClosestDistributors(
+                          closestDistributorsByStore[order.storeId],
+                        );
+                        const selectedDistributor = pickDistributorForManufacturer(
+                          manufacturer,
+                          distributors,
+                        );
+
+                        downloadPurchaseOrderPdf(
+                          order,
+                          manufacturer,
+                          items,
+                          selectedDistributor,
+                        );
+                      }}
                     >
                       Download Purchase Order
                     </Button>

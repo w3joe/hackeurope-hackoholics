@@ -1,6 +1,7 @@
 import { AlertsDisplay } from "@/components/alert-display";
 import { Alert } from "@/components/alert-display/types";
 import { MapDisplay } from "@/components/map-display";
+import type { ClosestDistributorPoint } from "@/components/map-display";
 import { TakeAction } from "@/components/take-action";
 import { Branch } from "@/components/take-action/types";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -52,6 +53,41 @@ function formatAddress(
   return [address, `${postalCode} ${city}`, country].join(", ");
 }
 
+function parseClosestDistributors(value: unknown): ClosestDistributorPoint[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const distributors: ClosestDistributorPoint[] = [];
+
+  value.forEach((entry, index) => {
+    if (!entry || typeof entry !== "object") {
+      return;
+    }
+
+    const candidate = entry as Record<string, unknown>;
+    const lat = Number(candidate.lat);
+    const lng = Number(candidate.lng ?? candidate.lon);
+    const name = String(candidate.name ?? "").trim();
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !name) {
+      return;
+    }
+
+    const distanceKmRaw = Number(candidate.distance_km);
+
+    distributors.push({
+      id: String(candidate.dist_id ?? `${name}-${index}`).trim(),
+      name,
+      lat,
+      lng,
+      distanceKm: Number.isFinite(distanceKmRaw) ? distanceKmRaw : undefined,
+    });
+  });
+
+  return distributors;
+}
+
 export default async function Page() {
   const [alertRows, pharmacyRows] =
     await Promise.all([
@@ -75,6 +111,7 @@ export default async function Page() {
           country: pharmacies.country,
           latitude: pharmacies.latitude,
           longitude: pharmacies.longitude,
+          closestDistributors: pharmacies.closestDistributors,
         })
         .from(pharmacies),
     ]);
@@ -208,10 +245,12 @@ export default async function Page() {
       const takeAction = takeActionByStore.get(store.storeId);
 
       return {
+        id: store.storeId,
         lat: store.latitude as number,
         lng: store.longitude as number,
         label: store.name ?? store.storeId,
         color: severityConfig[severity].markerColor,
+        closestDistributors: parseClosestDistributors(store.closestDistributors),
         popup: {
           name: store.name ?? store.storeId,
           address: formatAddress(
