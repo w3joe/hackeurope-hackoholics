@@ -1,4 +1,5 @@
-# HackEurope Hackoholics
+# Vitarisk: AI & Topological Math for Medical Restock
+
 
 **Preventive Risk-Based Stock Replenishment System**
 
