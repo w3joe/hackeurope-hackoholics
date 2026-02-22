@@ -41,9 +41,12 @@ MODULE_2_MAX_PHARMACIES = _int_env("MODULE_2_MAX_PHARMACIES", 20)  # 0 = no limi
 MODULE_2_BATCH_SIZE = _int_env("MODULE_2_BATCH_SIZE", 5)  # 5 avoids output truncation
 MODULE_2_REQUEST_TIMEOUT = _int_env("MODULE_2_REQUEST_TIMEOUT", 120)  # seconds per LLM call
 MODULE_2_BATCH_DELAY = _int_env("MODULE_2_BATCH_DELAY", 5, allow_zero=True)  # seconds between batches
+MODULE_2_SLOW_RETRY_MS = _int_env("MODULE_2_SLOW_RETRY_MS", 10000, allow_zero=True)  # retry batch if slower than this (0=off)
 
 # Orchestration uses same batch size as Module 2
 ORCHESTRATION_BATCH_SIZE = _int_env("ORCHESTRATION_BATCH_SIZE", 5)
+ORCHESTRATION_SLOW_RETRY_MS = _int_env("ORCHESTRATION_SLOW_RETRY_MS", 10000, allow_zero=True)  # retry batch if slower (0=off)
+ORCHESTRATION_REQUEST_TIMEOUT = _int_env("ORCHESTRATION_REQUEST_TIMEOUT", 120)  # seconds per LLM call
 
 # Alerts / Supabase Realtime
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")

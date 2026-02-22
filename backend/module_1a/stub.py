@@ -2,6 +2,8 @@
 
 Runs LLM risk analyzer for every pathogen×country, writes llm_risk_output.txt,
 then returns risk_assessments in RiskAssessment schema for Module 1B.
+
+On each run: truncates module_1a_results in Supabase, then pushes new results.
 """
 
 import json
@@ -9,6 +11,18 @@ from pathlib import Path
 
 # Resolve paths relative to backend root
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _truncate_and_push(risk_assessments: list) -> None:
+    """Truncate module_1a_results and push new risk_assessments to Supabase."""
+    try:
+        from src.module_1a_push import truncate_module_1a_results, push_module_1a_results
+    except ImportError:
+        return
+    truncate_module_1a_results()
+    pushed = push_module_1a_results(risk_assessments)
+    if pushed is not None:
+        print(f"[module_1a] Pushed {len(pushed)} risk assessment(s) to Supabase module_1a_results.")
 
 
 def _mock_risk_assessments() -> dict:
@@ -35,8 +49,13 @@ def _mock_risk_assessments() -> dict:
 
 
 def run_module_1a() -> dict:
-    """Run LLM risk analyzer, then return risk_assessments in RiskAssessment schema."""
+    """Run LLM risk analyzer, then return risk_assessments in RiskAssessment schema.
+
+    On each run: truncates Supabase module_1a_results, then pushes new results.
+    """
     from .llm_risk_analyzer import run_llm_risk_analyzer, extract_risk_assessments
+
+    risk_assessments: list = []
     try:
         result = run_llm_risk_analyzer()
         if isinstance(result, tuple):
@@ -44,6 +63,7 @@ def run_module_1a() -> dict:
         else:
             risk_assessments = extract_risk_assessments()
         if risk_assessments:
+            _truncate_and_push(risk_assessments)
             return {"risk_assessments": risk_assessments}
     except Exception:
         pass
@@ -51,7 +71,13 @@ def run_module_1a() -> dict:
     if mock_path.exists():
         data = json.loads(mock_path.read_text())
         if "risk_assessments" in data:
+            risk_assessments = data["risk_assessments"]
+            _truncate_and_push(risk_assessments)
             return data
         if "countries" in data:
-            return _mock_risk_assessments()
-    return _mock_risk_assessments()
+            out = _mock_risk_assessments()
+            _truncate_and_push(out["risk_assessments"])
+            return out
+    out = _mock_risk_assessments()
+    _truncate_and_push(out["risk_assessments"])
+    return out

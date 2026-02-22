@@ -1,0 +1,16 @@
+{
+  "model_name": "Qwen/Qwen2.5-3B-Instruct",
+  "optimization_level": "ultra_fast",
+  "lora_r": 4,
+  "lora_alpha": 8,
+  "target_modules": [
+    "q_proj",
+    "v_proj"
+  ],
+  "max_seq_length": 256,
+  "train_samples": 50,
+  "num_epochs": 1,
+  "training_time_seconds": 43.266998052597046,
+  "training_time_minutes": 0.7211166342099508,
+  "device": "cpu"
+}

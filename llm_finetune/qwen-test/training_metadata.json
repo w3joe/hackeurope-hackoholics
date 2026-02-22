@@ -1,6 +1,6 @@
 {
   "model_name": "Qwen/Qwen2.5-3B-Instruct",
-  "num_epochs": 1,
+  "num_epochs": 10,
   "batch_size": 1,
   "learning_rate": 0.0002,
   "lora_r": 8,

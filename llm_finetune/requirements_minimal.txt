@@ -1,0 +1,23 @@
+# Minimal requirements for GPU training (smallest footprint)
+# Install ONLY what you need for training
+
+# Core (required)
+torch>=2.0.0
+transformers>=4.36.0
+peft>=0.7.0
+
+# Training only
+trl>=0.7.4
+accelerate>=0.25.0
+
+# GPU quantization (skip if not using GPU)
+# bitsandbytes>=0.41.0  # Uncomment only if using GPU
+
+# Data processing (minimal)
+datasets>=2.18.0
+
+# DO NOT INSTALL (only if needed):
+# pandas  # Only if running prepare_training_data.py
+# numpy   # Only if running evaluate.py
+# scikit-learn  # Only if running evaluate.py
+# tqdm    # Nice to have but not required

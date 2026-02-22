@@ -1,0 +1,635 @@
+{
+  "forecast_metrics": {
+    "rmse": 26.873420837325494,
+    "mae": 17.249916666666664,
+    "mape": 250.78609538254315,
+    "n_forecasts": 10,
+    "n_weeks": 120
+  },
+  "risk_classification_metrics": {
+    "accuracy": 0.5,
+    "classification_report": {
+      "CRITICAL": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1-score": 0.6666666666666666,
+        "support": 6.0
+      },
+      "HIGH": {
+        "precision": 0.2,
+        "recall": 1.0,
+        "f1-score": 0.3333333333333333,
+        "support": 1.0
+      },
+      "LOW": {
+        "precision": 0.5,
+        "recall": 0.5,
+        "f1-score": 0.5,
+        "support": 2.0
+      },
+      "MEDIUM": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 1.0
+      },
+      "accuracy": 0.5,
+      "macro avg": {
+        "precision": 0.425,
+        "recall": 0.5,
+        "f1-score": 0.375,
+        "support": 10.0
+      },
+      "weighted avg": {
+        "precision": 0.72,
+        "recall": 0.5,
+        "f1-score": 0.5333333333333333,
+        "support": 10.0
+      }
+    },
+    "n_samples": 10
+  },
+  "n_samples_evaluated": 10,
+  "predictions": [
+    {
+      "prediction": {
+        "RiskAssessment": {
+          "country": "Norway",
+          "risk_level": "CRITICAL",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on elevated TDA status with H0 falling and H1 falling trends, strong signal convergence detected. Forecasting 12 weeks with 10.4 peak cases per 100k next year.",
+          "recommended_disease_focus": [
+            "RSV"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              1.9,
+              0.7,
+              1.9,
+              0.6,
+              0.6,
+              0.6,
+              0.6,
+              0.6,
+              0.6,
+              0.6,
+              0.6,
+              0.6
+            ],
+            "forecast_start_week": "2025-W08"
+          }
+        }
+      },
+      "ground_truth": {
+        "RiskAssessment": {
+          "country": "Norway",
+          "risk_level": "CRITICAL",
+          "spread_likelihood": 0.9,
+          "reasoning": "Based on elevated TDA status with H0 falling and H1 falling trends, strong signal convergence detected. Trajectory pattern significantly differs from historical norms. Forecasting 11.7 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "RSV"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              9.7,
+              10.9,
+              6.1,
+              9.9,
+              7.9,
+              7.4,
+              8.3,
+              11.7,
+              8.0,
+              3.9,
+              6.2,
+              0.0
+            ],
+            "forecast_start_week": "2025-W08"
+          }
+        }
+      }
+    },
+    {
+      "prediction": {
+        "RiskAssessment": {
+          "country": "Denmark",
+          "risk_level": "LOW",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 falling and H1 rising trends, strong signal convergence detected. Forecasting 11.9 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "RSV"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              2.7,
+              1.8,
+              1.4,
+              0.0,
+              1.3,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "forecast_start_week": "2025-W03"
+          }
+        }
+      },
+      "ground_truth": {
+        "RiskAssessment": {
+          "country": "Denmark",
+          "risk_level": "CRITICAL",
+          "spread_likelihood": 0.65,
+          "reasoning": "Based on normal TDA status with H0 falling and H1 rising trends, strong signal convergence detected. Forecasting 11.7 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "RSV"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              11.7,
+              9.4,
+              9.8,
+              8.1,
+              9.3,
+              7.0,
+              6.9,
+              7.2,
+              7.4,
+              7.0,
+              6.1,
+              1.8
+            ],
+            "forecast_start_week": "2025-W03"
+          }
+        }
+      }
+    },
+    {
+      "prediction": {
+        "RiskAssessment": {
+          "country": "Portugal",
+          "risk_level": "CRITICAL",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 rising trends, strong signal convergence detected. Forecasting 126.6 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "SARS-CoV-2"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              66.67,
+              66.67,
+              66.67,
+              66.67,
+              66.67,
+              66.67,
+              66.67,
+              66.67,
+              66.67,
+              66.67,
+              66.67,
+              66.67
+            ],
+            "forecast_start_week": "2024-W32"
+          }
+        }
+      },
+      "ground_truth": {
+        "RiskAssessment": {
+          "country": "Portugal",
+          "risk_level": "CRITICAL",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 rising trends, strong signal convergence detected. Forecasting 100.0 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "SARS-CoV-2"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              75.0,
+              83.33,
+              91.67,
+              100.0,
+              82.1,
+              64.2,
+              46.3,
+              28.4,
+              10.5,
+              2.3,
+              12.1,
+              3.7
+            ],
+            "forecast_start_week": "2024-W32"
+          }
+        }
+      }
+    },
+    {
+      "prediction": {
+        "RiskAssessment": {
+          "country": "Poland",
+          "risk_level": "HIGH",
+          "spread_likelihood": 0.7,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 falling trends, strong signal convergence detected. Forecasting 4.4 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "RSV"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              4.4
+            ],
+            "forecast_start_week": "2025-W16"
+          }
+        }
+      },
+      "ground_truth": {
+        "RiskAssessment": {
+          "country": "Poland",
+          "risk_level": "CRITICAL",
+          "spread_likelihood": 0.7,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 falling trends, strong signal convergence detected. Recent observations deviate from forecast expectations. Forecasting 9.1 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "RSV"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              6.2,
+              9.1,
+              4.55,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "forecast_start_week": "2025-W16"
+          }
+        }
+      }
+    },
+    {
+      "prediction": {
+        "RiskAssessment": {
+          "country": "Luxembourg",
+          "risk_level": "HIGH",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 falling trends, strong signal convergence detected. Forecasting 69.3 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "Influenza"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              53.4,
+              69.3,
+              69.3,
+              69.3,
+              69.3,
+              69.3,
+              69.3,
+              69.3,
+              69.3,
+              69.3,
+              69.3,
+              69.3
+            ],
+            "forecast_start_week": "2024-W07"
+          }
+        }
+      },
+      "ground_truth": {
+        "RiskAssessment": {
+          "country": "Luxembourg",
+          "risk_level": "MEDIUM",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 falling trends, strong signal convergence detected. Forecasting 32.9 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "Influenza"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              32.9,
+              25.3,
+              3.1,
+              13.2,
+              4.8,
+              5.6,
+              5.6,
+              6.7,
+              2.8,
+              0.0,
+              3.2,
+              0.0
+            ],
+            "forecast_start_week": "2024-W07"
+          }
+        }
+      }
+    },
+    {
+      "prediction": {
+        "RiskAssessment": {
+          "country": "Spain",
+          "risk_level": "HIGH",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 falling and H1 rising trends, strong signal convergence detected. Forecasting 39.7 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "SARS-CoV-2"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              28.7,
+              30.0,
+              30.6,
+              32.4,
+              34.5,
+              37.0,
+              39.7,
+              39.7,
+              39.7,
+              39.7,
+              39.7,
+              39.7
+            ],
+            "forecast_start_week": "2025-W34"
+          }
+        }
+      },
+      "ground_truth": {
+        "RiskAssessment": {
+          "country": "Spain",
+          "risk_level": "HIGH",
+          "spread_likelihood": 0.7,
+          "reasoning": "Based on normal TDA status with H0 falling and H1 rising trends, strong signal convergence detected. Recent observations deviate from forecast expectations. Forecasting 35.0 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "SARS-CoV-2"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              31.0,
+              28.3,
+              24.8,
+              30.2,
+              35.0,
+              22.2,
+              15.0,
+              10.7,
+              10.4,
+              6.8,
+              5.8,
+              4.0
+            ],
+            "forecast_start_week": "2025-W34"
+          }
+        }
+      }
+    },
+    {
+      "prediction": {
+        "RiskAssessment": {
+          "country": "Germany",
+          "risk_level": "HIGH",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 falling trends, strong signal convergence detected. Forecasting 23.0 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "Influenza"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              23.0,
+              18.8,
+              11.5,
+              11.5,
+              11.5,
+              11.5,
+              11.5,
+              11.5,
+              11.5,
+              11.5,
+              11.5,
+              11.5
+            ],
+            "forecast_start_week": "2024-W11"
+          }
+        }
+      },
+      "ground_truth": {
+        "RiskAssessment": {
+          "country": "Germany",
+          "risk_level": "LOW",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 falling trends, strong signal convergence detected. Forecasting 17.1 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "Influenza"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              14.6,
+              17.1,
+              15.6,
+              11.7,
+              6.3,
+              5.5,
+              4.7,
+              9.9,
+              3.8,
+              2.2,
+              2.9,
+              1.3
+            ],
+            "forecast_start_week": "2024-W11"
+          }
+        }
+      }
+    },
+    {
+      "prediction": {
+        "RiskAssessment": {
+          "country": "Netherlands",
+          "risk_level": "CRITICAL",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 falling trends, strong signal convergence detected. Forecasting 13.9 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "Influenza"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              13.9,
+              13.9,
+              13.9,
+              13.9,
+              13.9,
+              13.9,
+              13.9,
+              13.9,
+              13.9,
+              13.9,
+              13.9,
+              13.9
+            ],
+            "forecast_start_week": "2024-W49"
+          }
+        }
+      },
+      "ground_truth": {
+        "RiskAssessment": {
+          "country": "Netherlands",
+          "risk_level": "CRITICAL",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 falling trends, strong signal convergence detected. Forecasting 70.7 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "Influenza"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              10.9,
+              14.3,
+              19.2,
+              21.9,
+              33.3,
+              52.2,
+              58.8,
+              56.9,
+              70.7,
+              60.3,
+              54.5,
+              46.8
+            ],
+            "forecast_start_week": "2024-W49"
+          }
+        }
+      }
+    },
+    {
+      "prediction": {
+        "RiskAssessment": {
+          "country": "Netherlands",
+          "risk_level": "HIGH",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 rising trends, strong signal convergence detected. Forecasting 27.7 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "SARS-CoV-2"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              14.3,
+              14.3,
+              14.3,
+              14.3,
+              14.3,
+              14.3,
+              14.3,
+              14.3,
+              14.3,
+              14.3,
+              14.3,
+              14.3
+            ],
+            "forecast_start_week": "2024-W33"
+          }
+        }
+      },
+      "ground_truth": {
+        "RiskAssessment": {
+          "country": "Netherlands",
+          "risk_level": "CRITICAL",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 rising and H1 rising trends, strong signal convergence detected. Forecasting 43.8 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "SARS-CoV-2"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              0.0,
+              12.5,
+              16.7,
+              10.0,
+              43.8,
+              16.7,
+              0.0,
+              25.0,
+              23.5,
+              15.9,
+              11.8,
+              14.8
+            ],
+            "forecast_start_week": "2024-W33"
+          }
+        }
+      }
+    },
+    {
+      "prediction": {
+        "RiskAssessment": {
+          "country": "Ireland",
+          "risk_level": "LOW",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 falling and H1 falling trends, strong signal convergence detected. Forecasting 12.2 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "SARS-CoV-2"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              12.2,
+              12.2,
+              12.2,
+              12.2,
+              12.2,
+              12.2,
+              12.2,
+              12.2,
+              12.2,
+              12.2,
+              12.2,
+              12.2
+            ],
+            "forecast_start_week": "2024-W17"
+          }
+        }
+      },
+      "ground_truth": {
+        "RiskAssessment": {
+          "country": "Ireland",
+          "risk_level": "LOW",
+          "spread_likelihood": 0.6,
+          "reasoning": "Based on normal TDA status with H0 falling and H1 falling trends, strong signal convergence detected. Forecasting 8.2 peak cases per 100k over the next 12 weeks.",
+          "recommended_disease_focus": [
+            "SARS-CoV-2"
+          ],
+          "twelve_week_forecast": {
+            "weekly_cases_per_100k": [
+              7.18,
+              7.27,
+              7.36,
+              7.45,
+              7.54,
+              7.62,
+              7.71,
+              7.8,
+              7.89,
+              7.97,
+              8.06,
+              8.15
+            ],
+            "forecast_start_week": "2024-W17"
+          }
+        }
+      }
+    }
+  ]
+}

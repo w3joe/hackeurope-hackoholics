@@ -1,16 +1,27 @@
 """Final Orchestration Agent — reconciles all upstream outputs."""
 
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
+SUPABASE_PUSH_TIMEOUT_SEC = 30
+
 
 def _push_to_supabase(result: dict) -> None:
-    """Push orchestration result to Supabase on success. No-op if not configured."""
+    """Push orchestration result to Supabase on success. No-op if not configured or timeout."""
     try:
         from src.orchestration_push import push_orchestration_to_supabase
-        push_orchestration_to_supabase(result)
+
+        with ThreadPoolExecutor(max_workers=1) as ex:
+            future = ex.submit(push_orchestration_to_supabase, result)
+            try:
+                future.result(timeout=SUPABASE_PUSH_TIMEOUT_SEC)
+            except FuturesTimeoutError:
+                import sys
+                print("[orchestration] Supabase push timed out after 30s", file=sys.stderr)
     except Exception:
         pass
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -21,7 +32,7 @@ PROMPTS_DIR = BACKEND_ROOT / "prompts"
 
 
 def _get_llm():
-    from src.config import API_KEY, GEMINI_MODEL, ORCHESTRATION_TEMPERATURE
+    from src.config import API_KEY, GEMINI_MODEL, ORCHESTRATION_TEMPERATURE, ORCHESTRATION_REQUEST_TIMEOUT
 
     if not API_KEY:
         raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY must be set")
@@ -29,7 +40,27 @@ def _get_llm():
         model=GEMINI_MODEL,
         temperature=ORCHESTRATION_TEMPERATURE,
         api_key=API_KEY,
+        timeout=ORCHESTRATION_REQUEST_TIMEOUT,
     )
+
+
+def _load_drug_quantity_by_pharmacy() -> dict[str, dict[str, int]]:
+    """Load inventory and return pharmacy_id -> { drug_name -> quantity }."""
+    try:
+        from module_2.loader import load_vaccine_inventory
+        inv = load_vaccine_inventory(max_pharmacies=0)
+        result: dict[str, dict[str, int]] = {}
+        for p in inv.get("pharmacies", []):
+            pid = p.get("pharmacy_id", "")
+            by_drug: dict[str, int] = {}
+            for s in p.get("stock", []):
+                name = s.get("drug_name", "")
+                qty = s.get("quantity", 0)
+                by_drug[name] = by_drug.get(name, 0) + qty  # sum if same drug appears twice
+            result[pid] = by_drug
+        return result
+    except Exception:
+        return {}
 
 
 def _validate_cost_arithmetic(output: dict) -> list[str]:
@@ -72,6 +103,8 @@ def _run_orchestration_batch(
 
     user_prompt = user_tpl.render(joined_pharmacies_json=json.dumps(batch_joined, indent=2))
 
+    from src.config import ORCHESTRATION_SLOW_RETRY_MS
+
     last_error = None
     for attempt in range(3):
         retry = attempt > 0
@@ -84,6 +117,11 @@ def _run_orchestration_batch(
                         HumanMessage(content=user_prompt),
                     ]
                 )
+
+            # Retry if batch took > 10s (configurable) and we have retries left
+            if ORCHESTRATION_SLOW_RETRY_MS > 0 and timer.elapsed_ms > ORCHESTRATION_SLOW_RETRY_MS and attempt < 2:
+                time.sleep(2)
+                continue
 
             output = response.model_dump()
             validation_errors = _validate_cost_arithmetic(output)
@@ -112,7 +150,19 @@ def _run_orchestration_batch(
 
         except Exception as e:
             last_error = e
-            if attempt < 2 and ("parse" in str(e).lower() or "completion" in str(e).lower() or "output" in str(e).lower()):
+            err_str = str(e).lower()
+            retriable = (
+                attempt < 2
+                and (
+                    "parse" in err_str
+                    or "completion" in err_str
+                    or "output" in err_str
+                    or "timeout" in err_str
+                    or "timed out" in err_str
+                )
+            )
+            if retriable:
+                time.sleep(2)
                 continue
             raise
 
@@ -185,6 +235,14 @@ def run_orchestration(
         all_directives.sort(key=lambda d: d.get("total_order_cost_usd", 0), reverse=True)
         for rank, d in enumerate(all_directives, start=1):
             d["priority_rank"] = rank
+
+        # Add current_stock_quantity to each drug in drugs_to_deliver
+        drug_qty_by_pharmacy = _load_drug_quantity_by_pharmacy()
+        for d in all_directives:
+            pid = d.get("pharmacy_id", "")
+            drug_qtys = drug_qty_by_pharmacy.get(pid, {})
+            for dr in d.get("drugs_to_deliver", []):
+                dr["current_stock_quantity"] = drug_qtys.get(dr.get("drug_name", ""), 0)
 
         grand_total = round(sum(d["total_order_cost_usd"] for d in all_directives), 2)
         overall_summary = " ".join(s.strip() for s in summaries if s.strip()) or "Processed replenishment directives."

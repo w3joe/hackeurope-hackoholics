@@ -79,7 +79,7 @@ def _run_batch(
         risk_context_json=json.dumps(risk_context, indent=2),
     )
 
-    from src.config import MODULE_2_REQUEST_TIMEOUT
+    from src.config import MODULE_2_REQUEST_TIMEOUT, MODULE_2_SLOW_RETRY_MS
 
     last_error = None
     for attempt in range(3):  # Up to 3 attempts (initial + 2 retries)
@@ -96,6 +96,11 @@ def _run_batch(
                         ],
                     )
                     response = future.result(timeout=MODULE_2_REQUEST_TIMEOUT)
+
+            # Retry if batch took > 10s (configurable) and we have retries left
+            if MODULE_2_SLOW_RETRY_MS > 0 and timer.elapsed_ms > MODULE_2_SLOW_RETRY_MS and attempt < 2:
+                time.sleep(5)
+                continue
 
             validation_errors = []
             for report in response.gap_reports:

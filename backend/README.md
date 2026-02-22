@@ -93,6 +93,14 @@ When Module 1B completes, risk assessments are transformed into Alerts and pushe
 
 Module 3 retrieves the closest distributors from Supabase per pharmacy. Run `supabase_distributors.sql` in the Supabase SQL Editor to create and seed the `distributors` table. If Supabase is not configured, falls back to hardcoded distributors. The orchestration uses `assigned_distributor_id` and `assigned_distributor_name` from Module 3's routing plan (not supplier ids from Module 2).
 
+## Module 1A Results (Supabase)
+
+Module 1A risk assessments are stored in Supabase. On each run, the table is truncated and repopulated with the latest results.
+
+1. Run `supabase_module_1a_results.sql` in the Supabase SQL Editor to create the `module_1a_results` table.
+2. With `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` set, `run_module_1a` automatically truncates and pushes results.
+3. Table columns: `id`, `country`, `risk_level`, `spread_likelihood`, `reasoning`, `recommended_disease_focus` (JSONB), `twelve_week_forecast` (JSONB), `created_at`.
+
 ## Orchestration Results (Supabase)
 
 When orchestration completes successfully, the result is pushed to Supabase for persistence and real-time access.
