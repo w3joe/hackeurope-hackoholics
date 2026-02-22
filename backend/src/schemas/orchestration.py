@@ -32,8 +32,11 @@ class ReplenishmentDirective(BaseModel):
         description="Country risk level from Module 1B (risk_level): LOW, MEDIUM, HIGH, or CRITICAL",
     )
     priority_rank: int
-    assigned_supplier_id: str
-    assigned_supplier_name: str
+    assigned_distributor_id: str = Field(
+        ...,
+        description="Must appear in routing_plan.available_distributors for this pharmacy (from Module 3)",
+    )
+    assigned_distributor_name: str
     drugs_to_deliver: list[DrugToDeliver]
     total_order_cost_usd: float
     delivery_window: str

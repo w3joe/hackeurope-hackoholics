@@ -12,6 +12,7 @@ from module_1b import run_module_1b
 from module_1c import run_module_1c
 from module_2 import run_module_2
 from module_3 import run_module_3
+from module_join import run_join_module
 from orchestration import run_orchestration
 
 if __name__ == "__main__":
@@ -34,9 +35,11 @@ if __name__ == "__main__":
         sys.exit("Module 2 failed; cannot run orchestration")
     routing = run_module_3(gap_reports=gap_reports)
     routing_plan = routing.get("routing_plan", [])
-    result = run_orchestration(
+    join_result = run_join_module(
         risk_assessments=risk_assessments,
         gap_reports=gap_reports,
         routing_plan=routing_plan,
     )
+    joined_pharmacies = join_result.get("joined_pharmacies", [])
+    result = run_orchestration(joined_pharmacies=joined_pharmacies)
     print(json.dumps(result, indent=2))

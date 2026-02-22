@@ -22,7 +22,8 @@ backend/
 ├── module_2/                   # Pharmacy Inventory Gap Analyzer (LLM)
 │   ├── vaccine_stock_dataset.csv
 │   └── loader.py               # CSV to inventory transform
-├── module_3/                   # Logistics Routing stub (non-LLM)
+├── module_3/                   # Logistics Routing (closest distributors from Supabase)
+├── module_join/                 # Join Module (pre-joins risk, gaps, routing per pharmacy)
 ├── orchestration/              # Final Orchestration Agent (LLM)
 ├── pipeline/                   # LangGraph pipeline
 └── scripts/                    # Smoke test scripts
@@ -58,6 +59,7 @@ uv run python scripts/run_module_1c.py     # pushes alerts to Supabase
 uv run python scripts/run_module_1c.py --verify  # push + verify in table
 uv run python scripts/run_module_2.py
 uv run python scripts/run_module_3.py
+uv run python scripts/run_module_join.py
 uv run python scripts/run_orchestration.py
 
 # Full LangGraph pipeline
@@ -86,6 +88,10 @@ When Module 1B completes, risk assessments are transformed into Alerts and pushe
 2. Set env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ALERTS_API_KEY`.
 3. Pipeline automatically pushes alerts when it runs. For external triggers, POST to `POST /internal/alerts` with `X-API-Key` and body `{"risk_assessments": [...]}`.
 4. Frontend: subscribe to `postgres_changes` on `alerts` (INSERT). Row columns match Alert interface: `id`, `affectedStoreIds`, `timestamp`, `description`, `severity`.
+
+### Module 3 (Logistics Routing)
+
+Module 3 retrieves the closest distributors from Supabase per pharmacy. Run `supabase_distributors.sql` in the Supabase SQL Editor to create and seed the `distributors` table. If Supabase is not configured, falls back to hardcoded distributors. The orchestration uses `assigned_distributor_id` and `assigned_distributor_name` from Module 3's routing plan (not supplier ids from Module 2).
 
 ## Orchestration Results (Supabase)
 

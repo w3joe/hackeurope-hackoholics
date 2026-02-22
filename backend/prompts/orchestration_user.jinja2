@@ -1,13 +1,7 @@
-Produce final replenishment directives by reconciling all three upstream inputs.
+Produce final replenishment directives from the pre-joined pharmacy data below. Each pharmacy has risk (country_risk), gaps (critical_gaps), and logistics (available_distributors) already linked.
 
-## Risk Assessments
-{{ risk_assessments_json }}
-
-## Gap Reports
-{{ gap_reports_json }}
-
-## Routing Plan
-{{ routing_plan_json }}
+## Joined Pharmacies
+{{ joined_pharmacies_json }}
 
 Return a valid JSON object with: replenishment_directives (array), grand_total_cost_usd, overall_system_summary.
-Each directive: pharmacy_id, pharmacy_name, location, severity (risk_level from Module 1B for pharmacy's country: LOW|MEDIUM|HIGH|CRITICAL), priority_rank, assigned_supplier_id, assigned_supplier_name, drugs_to_deliver (drug_name, category, quantity, unit_cost_usd, total_cost_usd, rationale), total_order_cost_usd, delivery_window, feasibility_flag (FEASIBLE|CONSTRAINED|INFEASIBLE), directive_summary.
+Each directive: pharmacy_id, pharmacy_name, location, severity (from country_risk.risk_level: LOW|MEDIUM|HIGH|CRITICAL), priority_rank, assigned_distributor_id, assigned_distributor_name (MUST be from this pharmacy's available_distributors), drugs_to_deliver (drug_name, category, quantity, unit_cost_usd, total_cost_usd, rationale), total_order_cost_usd, delivery_window, feasibility_flag (FEASIBLE|CONSTRAINED|INFEASIBLE), directive_summary.

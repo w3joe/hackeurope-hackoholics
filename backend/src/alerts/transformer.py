@@ -40,6 +40,25 @@ def _load_country_to_stores() -> dict[str, list[str]]:
     return _COUNTRY_TO_STORES
 
 
+def _get_valid_store_ids() -> set[str]:
+    """Return set of all Store_IDs from vaccine CSV (for validation)."""
+    country_to_stores = _load_country_to_stores()
+    return {s for stores in country_to_stores.values() for s in stores}
+
+
+def _filter_alerts_valid_stores(alerts: list[dict], valid_store_ids: set[str]) -> list[dict]:
+    """Remove invalid store IDs from each alert; drop alerts with no valid stores."""
+    filtered = []
+    for a in alerts:
+        store_ids = a.get("affectedStoreIds", [])
+        valid_ids = [sid for sid in store_ids if sid in valid_store_ids]
+        if not valid_ids:
+            continue  # Drop entry
+        a_filtered = {**a, "affectedStoreIds": valid_ids}
+        filtered.append(a_filtered)
+    return filtered
+
+
 def _risk_level_to_severity(risk_level: str) -> Severity:
     """Map Module 1B risk_level to Alert severity."""
     mapping = {
@@ -103,14 +122,17 @@ def risk_assessments_to_alerts(risk_assessments: list[dict]) -> list[dict]:
     Produces between 1 and 5 alerts (when risk_assessments are present).
     """
     country_to_stores = _load_country_to_stores()
+    valid_store_ids = _get_valid_store_ids()
 
     from src.alerts.llm_reformatter import reformat_to_alerts_with_llm
 
     llm_result = reformat_to_alerts_with_llm(risk_assessments, country_to_stores)
     if llm_result is not None:
-        return _apply_alert_limits(llm_result)
+        alerts = _filter_alerts_valid_stores(llm_result, valid_store_ids)
+        return _apply_alert_limits(alerts)
 
     alerts = _risk_assessments_to_alerts_deterministic(
         risk_assessments, country_to_stores
     )
+    alerts = _filter_alerts_valid_stores(alerts, valid_store_ids)
     return _apply_alert_limits(alerts)

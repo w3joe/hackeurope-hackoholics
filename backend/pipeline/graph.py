@@ -12,12 +12,14 @@ class PipelineState(TypedDict, total=False):
     risk_assessments: list[dict]
     gap_reports: list[dict]
     routing_plan: list[dict]
+    joined_pharmacies: list[dict]
     final_output: dict
     module_1a_output: dict
     module_1b_output: dict
     module_1c_output: dict
     module_2_output: dict
     module_3_output: dict
+    module_join_output: dict
     errors: list[dict]
 
 
@@ -70,7 +72,7 @@ def module_2_node(state: PipelineState) -> PipelineState:
 
 
 def module_3_node(state: PipelineState) -> PipelineState:
-    """Run Module 3 stub — Logistics Routing Engine."""
+    """Run Module 3 — Logistics Routing Engine (closest distributors from Supabase)."""
     from module_3 import run_module_3
 
     gap_reports = state.get("gap_reports", [])
@@ -79,18 +81,28 @@ def module_3_node(state: PipelineState) -> PipelineState:
     return {"routing_plan": routing_plan, "module_3_output": out}
 
 
-def orchestration_node(state: PipelineState) -> PipelineState:
-    """Run Final Orchestration Agent."""
-    from orchestration import run_orchestration
+def module_join_node(state: PipelineState) -> PipelineState:
+    """Run Join Module — Pre-join risk, gaps, and routing into per-pharmacy structures."""
+    from module_join import run_join_module
 
     risk_assessments = state.get("risk_assessments", [])
     gap_reports = state.get("gap_reports", [])
     routing_plan = state.get("routing_plan", [])
-    out = run_orchestration(
+    out = run_join_module(
         risk_assessments=risk_assessments,
         gap_reports=gap_reports,
         routing_plan=routing_plan,
     )
+    joined_pharmacies = out.get("joined_pharmacies", [])
+    return {"joined_pharmacies": joined_pharmacies, "module_join_output": out}
+
+
+def orchestration_node(state: PipelineState) -> PipelineState:
+    """Run Final Orchestration Agent."""
+    from orchestration import run_orchestration
+
+    joined_pharmacies = state.get("joined_pharmacies", [])
+    out = run_orchestration(joined_pharmacies=joined_pharmacies)
     final_output = out if "error" not in out else {"error": out.get("error"), "input_snapshot": out.get("input_snapshot")}
     return {"final_output": final_output}
 
@@ -104,6 +116,7 @@ def create_graph() -> StateGraph:
     graph.add_node("module_1c", module_1c_node)
     graph.add_node("module_2", module_2_node)
     graph.add_node("module_3", module_3_node)
+    graph.add_node("module_join", module_join_node)
     graph.add_node("orchestration", orchestration_node)
 
     graph.add_edge(START, "module_1a")
@@ -111,7 +124,8 @@ def create_graph() -> StateGraph:
     graph.add_edge("module_1b", "module_1c")
     graph.add_edge("module_1c", "module_2")
     graph.add_edge("module_2", "module_3")
-    graph.add_edge("module_3", "orchestration")
+    graph.add_edge("module_3", "module_join")
+    graph.add_edge("module_join", "orchestration")
     graph.add_edge("orchestration", END)
 
     return graph

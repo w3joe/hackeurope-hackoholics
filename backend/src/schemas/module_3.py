@@ -1,13 +1,13 @@
-"""Schemas for Module 3 - Logistics Routing Engine stub."""
+"""Schemas for Module 3 - Logistics Routing Engine (distributors from Supabase)."""
 
 from pydantic import BaseModel
 
 
-class AvailableSupplier(BaseModel):
-    """Supplier available for pharmacy delivery."""
+class AvailableDistributor(BaseModel):
+    """Distributor available for pharmacy delivery (from Supabase)."""
 
-    supplier_id: str
-    supplier_name: str
+    distributor_id: str
+    distributor_name: str
     distance_km: float
     can_fulfil_by_urgency: bool
 
@@ -20,10 +20,10 @@ class RoutingPlanItem(BaseModel):
     delivery_urgency_score: float
     estimated_delivery_time_hours: int
     capacity_remaining_units: int
-    available_suppliers: list[AvailableSupplier]
+    available_distributors: list[AvailableDistributor]
 
 
 class Module3Output(BaseModel):
-    """Module 3 stub output."""
+    """Module 3 output."""
 
     routing_plan: list[RoutingPlanItem]
