@@ -108,3 +108,9 @@ When orchestration completes successfully, the result is pushed to Supabase for 
 1. Run `supabase_orchestration_results.sql` in the Supabase SQL Editor to create the `orchestration_results` table.
 2. With `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` set, the pipeline and `run_orchestration.py` automatically push results on success.
 3. Table columns: `id`, `replenishment_directives` (JSONB), `grand_total_cost_usd`, `overall_system_summary`, `created_at`.
+
+## Confirmed Orders (Supabase)
+
+1. Run Drizzle migrations from `frontend/` to create the `confirm_orders` table: `pnpm drizzle-kit migrate`.
+2. Frontend writes confirmed purchase orders to this table via `POST /api/confirm-orders`.
+3. Orders page reads from this table and groups line items by manufacturer for PDF export.

@@ -1,78 +1,45 @@
 import {
   pgTable,
-  index,
+  check,
+  uuid,
   text,
+  numeric,
+  jsonb,
   timestamp,
+  bigint,
+  doublePrecision,
   foreignKey,
   bigserial,
   date,
   integer,
-  check,
-  uuid,
-  bigint,
-  jsonb,
-  numeric,
+  index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
-export const pharmacies = pgTable(
-  "pharmacies",
+export const module1AResults = pgTable(
+  "module_1a_results",
   {
-    storeId: text("store_id").primaryKey().notNull(),
-    name: text().default("dm-drogerie markt"),
+    id: uuid().defaultRandom().primaryKey().notNull(),
     country: text().notNull(),
-    city: text().notNull(),
-    address: text().notNull(),
-    postalCode: text("postal_code").notNull(),
+    riskLevel: text("risk_level").notNull(),
+    spreadLikelihood: numeric("spread_likelihood", { precision: 5, scale: 2 })
+      .default("0")
+      .notNull(),
+    reasoning: text().default("").notNull(),
+    recommendedDiseaseFocus: jsonb("recommended_disease_focus")
+      .default([])
+      .notNull(),
+    twelveWeekForecast: jsonb("twelve_week_forecast").default({}).notNull(),
     createdAt: timestamp("created_at", {
       withTimezone: true,
       mode: "string",
     }).defaultNow(),
   },
   (table) => [
-    index("idx_pharmacies_city").using(
-      "btree",
-      table.city.asc().nullsLast().op("text_ops"),
+    check(
+      "module_1a_results_risk_level_check",
+      sql`risk_level = ANY (ARRAY['LOW'::text, 'MEDIUM'::text, 'HIGH'::text, 'CRITICAL'::text])`,
     ),
-    index("idx_pharmacies_country").using(
-      "btree",
-      table.country.asc().nullsLast().op("text_ops"),
-    ),
-  ],
-);
-
-export const vaccineStock = pgTable(
-  "vaccine_stock",
-  {
-    id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
-    storeId: text("store_id"),
-    snapshotDate: date("snapshot_date").notNull(),
-    targetDisease: text("target_disease").notNull(),
-    vaccineBrand: text("vaccine_brand").notNull(),
-    manufacturer: text().notNull(),
-    stockQuantity: integer("stock_quantity").notNull(),
-    minStockLevel: integer("min_stock_level").notNull(),
-    expiryDate: date("expiry_date").notNull(),
-    storageType: text("storage_type").notNull(),
-    createdAt: timestamp("created_at", {
-      withTimezone: true,
-      mode: "string",
-    }).defaultNow(),
-  },
-  (table) => [
-    index("idx_stock_expiry").using(
-      "btree",
-      table.expiryDate.asc().nullsLast().op("date_ops"),
-    ),
-    index("idx_stock_store_id").using(
-      "btree",
-      table.storeId.asc().nullsLast().op("text_ops"),
-    ),
-    foreignKey({
-      columns: [table.storeId],
-      foreignColumns: [pharmacies.storeId],
-      name: "vaccine_stock_store_id_fkey",
-    }).onDelete("cascade"),
   ],
 );
 
@@ -115,3 +82,72 @@ export const orchestrationResults = pgTable("orchestration_results", {
     mode: "string",
   }).defaultNow(),
 });
+
+export const pharmacies = pgTable("pharmacies", {
+  storeId: text("store_id").primaryKey().notNull(),
+  name: text().default("dm-drogerie markt"),
+  country: text().notNull(),
+  city: text().notNull(),
+  address: text().notNull(),
+  postalCode: text("postal_code").notNull(),
+  latitude: doublePrecision(),
+  longitude: doublePrecision(),
+  closestDistributors: jsonb("closest_distributors"),
+  createdAt: timestamp("created_at", {
+    withTimezone: true,
+    mode: "string",
+  }).defaultNow(),
+});
+
+export const vaccineStock = pgTable(
+  "vaccine_stock",
+  {
+    id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
+    storeId: text("store_id"),
+    snapshotDate: date("snapshot_date").notNull(),
+    targetDisease: text("target_disease").notNull(),
+    vaccineBrand: text("vaccine_brand").notNull(),
+    manufacturer: text().notNull(),
+    stockQuantity: integer("stock_quantity").notNull(),
+    minStockLevel: integer("min_stock_level").notNull(),
+    expiryDate: date("expiry_date").notNull(),
+    storageType: text("storage_type").notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.storeId],
+      foreignColumns: [pharmacies.storeId],
+      name: "vaccine_stock_store_id_fkey",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const confirmOrders = pgTable(
+  "confirm_orders",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    storeId: text("store_id").notNull(),
+    storeName: text("store_name").notNull(),
+    storeAddress: text("store_address").notNull(),
+    lineItems: jsonb("line_items").notNull(),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "string",
+    }).defaultNow(),
+  },
+  (table) => [
+    index("idx_confirm_orders_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamptz_ops"),
+    ),
+    index("idx_confirm_orders_store_id").using(
+      "btree",
+      table.storeId.asc().nullsLast().op("text_ops"),
+    ),
+    foreignKey({
+      columns: [table.storeId],
+      foreignColumns: [pharmacies.storeId],
+      name: "confirm_orders_store_id_pharmacies_store_id_fk",
+    }).onDelete("cascade"),
+  ],
+);

@@ -12,15 +12,18 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { TeamSwitcher } from "./team-switcher";
-import {
-  AudioWaveform,
-  ClipboardList,
-  GalleryVerticalEnd,
-  LayoutDashboard,
-} from "lucide-react";
+import { Activity, ClipboardList, LayoutDashboard } from "lucide-react";
+import Image from "next/image";
+
+function CVSLogo({ className }: { className?: string }) {
+  return <Image src="/CVS_Logo.svg" alt="CVS" width={32} height={32} className={className} />;
+}
+function DMLogo({ className }: { className?: string }) {
+  return <Image src="/Dm_Logo.svg" alt="dm" width={32} height={32} className={className} />;
+}
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { TeamSwitcher } from "./team-switcher";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -28,12 +31,12 @@ export function AppSidebar() {
   const teams = [
     {
       name: "dm-Drogerie markt GmbH",
-      logo: GalleryVerticalEnd,
+      logo: DMLogo,
       plan: "Germany",
     },
     {
       name: "CVS Inc.",
-      logo: AudioWaveform,
+      logo: CVSLogo,
       plan: "USA",
     },
   ];
@@ -50,6 +53,12 @@ export function AppSidebar() {
       href: "/orders",
       icon: ClipboardList,
       isActive: pathname.startsWith("/orders"),
+    },
+    {
+      title: "EU Status",
+      href: "/status",
+      icon: Activity,
+      isActive: pathname.startsWith("/status"),
     },
   ];
 

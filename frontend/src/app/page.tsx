@@ -7,12 +7,20 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { db } from "@/lib/db";
 import {
   alerts as alertsTable,
+  confirmOrders,
+  orchestrationResults,
   pharmacies,
-  vaccineStock,
 } from "@/lib/db/schema";
-import { geocodeBranches } from "@/lib/geocode";
+import {
+  toDirectiveDrugId,
+  toReplenishmentDirectives,
+  toUiSeverity,
+} from "@/lib/orchestration/types";
+import { toConfirmOrderLineItems } from "@/lib/orders/types";
 import { Severity, severityConfig } from "@/lib/types";
-import { desc, isNotNull, sql } from "drizzle-orm";
+import { desc } from "drizzle-orm";
+
+export const dynamic = "force-dynamic";
 
 const severityRank: Record<Severity, number> = {
   low: 0,
@@ -45,36 +53,57 @@ function formatAddress(
 }
 
 export default async function Page() {
-  const [alertRows, pharmacyRows, shortageRows] = await Promise.all([
-    db
+  const [alertRows, pharmacyRows] =
+    await Promise.all([
+      db
+        .select({
+          id: alertsTable.id,
+          affectedStoreIds: alertsTable.affectedStoreIds,
+          timestamp: alertsTable.timestamp,
+          description: alertsTable.description,
+          severity: alertsTable.severity,
+        })
+        .from(alertsTable)
+        .orderBy(desc(alertsTable.timestamp)),
+      db
+        .select({
+          storeId: pharmacies.storeId,
+          name: pharmacies.name,
+          address: pharmacies.address,
+          postalCode: pharmacies.postalCode,
+          city: pharmacies.city,
+          country: pharmacies.country,
+          latitude: pharmacies.latitude,
+          longitude: pharmacies.longitude,
+        })
+        .from(pharmacies),
+    ]);
+
+  let confirmedOrderRows: { lineItems: unknown }[] = [];
+  try {
+    confirmedOrderRows = await db
       .select({
-        id: alertsTable.id,
-        affectedStoreIds: alertsTable.affectedStoreIds,
-        timestamp: alertsTable.timestamp,
-        description: alertsTable.description,
-        severity: alertsTable.severity,
+        lineItems: confirmOrders.lineItems,
       })
-      .from(alertsTable)
-      .orderBy(desc(alertsTable.timestamp)),
-    db
+      .from(confirmOrders);
+  } catch {
+    confirmedOrderRows = [];
+  }
+
+  let latestOrchestrationResult: { replenishmentDirectives: unknown } | null = null;
+  try {
+    const rows = await db
       .select({
-        storeId: pharmacies.storeId,
-        name: pharmacies.name,
-        address: pharmacies.address,
-        postalCode: pharmacies.postalCode,
-        city: pharmacies.city,
-        country: pharmacies.country,
+        replenishmentDirectives: orchestrationResults.replenishmentDirectives,
       })
-      .from(pharmacies),
-    db
-      .select({
-        storeId: vaccineStock.storeId,
-        shortageCount: sql<number>`sum(case when ${vaccineStock.stockQuantity} < ${vaccineStock.minStockLevel} then 1 else 0 end)::int`,
-      })
-      .from(vaccineStock)
-      .where(isNotNull(vaccineStock.storeId))
-      .groupBy(vaccineStock.storeId),
-  ]);
+      .from(orchestrationResults)
+      .orderBy(desc(orchestrationResults.createdAt))
+      .limit(1);
+
+    latestOrchestrationResult = rows[0] ?? null;
+  } catch {
+    latestOrchestrationResult = null;
+  }
 
   const alerts: Alert[] = alertRows.map((row) => ({
     id: row.id,
@@ -83,6 +112,13 @@ export default async function Page() {
     description: row.description,
     severity: toSeverity(row.severity),
   }));
+  const visibleAlerts = alerts.slice(0, 5);
+
+  const confirmedDrugIds = new Set(
+    confirmedOrderRows.flatMap((order) =>
+      toConfirmOrderLineItems(order.lineItems).map((lineItem) => lineItem.drugId),
+    ),
+  );
 
   const highestSeverityByStore = new Map<string, Severity>();
   for (const alert of alerts) {
@@ -94,112 +130,113 @@ export default async function Page() {
     }
   }
 
-  const shortageCountByStore = new Map<string, number>();
-  for (const row of shortageRows) {
-    if (!row.storeId) continue;
-    shortageCountByStore.set(row.storeId, Number(row.shortageCount));
+  const pharmacyByStoreId = new Map(
+    pharmacyRows.map((store) => [
+      store.storeId,
+      {
+        name: store.name ?? store.storeId,
+        address: formatAddress(
+          store.address,
+          store.postalCode,
+          store.city,
+          store.country,
+        ),
+      },
+    ]),
+  );
+
+  const directives = toReplenishmentDirectives(
+    latestOrchestrationResult?.replenishmentDirectives,
+  ).sort((left, right) => left.priorityRank - right.priorityRank);
+
+  const branchByStoreId = new Map<string, Branch>();
+  for (const directive of directives) {
+    const pharmacyMeta = pharmacyByStoreId.get(directive.pharmacyId);
+
+    const branch: Branch =
+      branchByStoreId.get(directive.pharmacyId) ?? {
+        id: directive.pharmacyId,
+        name: directive.pharmacyName || pharmacyMeta?.name || directive.pharmacyId,
+        address: directive.location || pharmacyMeta?.address || "Unknown location",
+        severity: toUiSeverity(directive.severity),
+        drugs: [],
+      };
+
+    branch.severity =
+      severityRank[toUiSeverity(directive.severity)] > severityRank[branch.severity]
+        ? toUiSeverity(directive.severity)
+        : branch.severity;
+
+    directive.drugsToDeliver.forEach((drug, index) => {
+      const drugId = toDirectiveDrugId(directive, drug, index);
+      if (confirmedDrugIds.has(drugId)) {
+        return;
+      }
+
+      branch.drugs.push({
+        id: drugId,
+        name: drug.drugName,
+        manufacturer: directive.assignedDistributorName,
+        currentStock: drug.currentStockQuantity,
+        suggestedQuantity: drug.quantity,
+        unitPriceUsd: drug.unitCostUsd,
+      });
+    });
+
+    if (branch.drugs.length > 0) {
+      branchByStoreId.set(directive.pharmacyId, branch);
+    }
   }
+  const branchData = Array.from(branchByStoreId.values());
+  const takeActionByStore = new Map(
+    branchData.map((branch) => [
+      branch.id,
+      {
+        drugCount: branch.drugs.length,
+        drugNames: Array.from(new Set(branch.drugs.map((drug) => drug.name))),
+      },
+    ]),
+  );
 
-  const branchesForMap = pharmacyRows.map((store) => ({
-    id: store.storeId,
-    name: store.name ?? store.storeId,
-    address: formatAddress(
-      store.address,
-      store.postalCode,
-      store.city,
-      store.country,
-    ),
-    severity: highestSeverityByStore.get(store.storeId) ?? "low",
-    drugCount: shortageCountByStore.get(store.storeId) ?? 0,
-  }));
+  const mapPoints = pharmacyRows
+    .filter(
+      (store) =>
+        typeof store.latitude === "number" && typeof store.longitude === "number",
+    )
+    .map((store) => {
+      const severity = highestSeverityByStore.get(store.storeId) ?? "low";
+      const takeAction = takeActionByStore.get(store.storeId);
 
-  const branchData: Branch[] = [
-    {
-      id: "b1",
-      name: "Apotheke am Brandenburger Tor",
-      address: "Unter den Linden 40, 10117 Berlin",
-      severity: "urgent",
-      drugs: [
-        {
-          id: "d1",
-          name: "Oseltamivir",
-          currentStock: 12,
-          suggestedQuantity: 200,
+      return {
+        lat: store.latitude as number,
+        lng: store.longitude as number,
+        label: store.name ?? store.storeId,
+        color: severityConfig[severity].markerColor,
+        popup: {
+          name: store.name ?? store.storeId,
+          address: formatAddress(
+            store.address,
+            store.postalCode,
+            store.city,
+            store.country,
+          ),
+          severity,
+          drugCount: takeAction?.drugCount ?? 0,
+          drugNames: takeAction?.drugNames ?? [],
+          takeActionTargetId:
+            takeAction && takeAction.drugCount > 0
+              ? `take-action-${store.storeId}`
+              : undefined,
         },
-        {
-          id: "d2",
-          name: "Amoxicillin",
-          currentStock: 45,
-          suggestedQuantity: 150,
-        },
-        {
-          id: "d3",
-          name: "Ibuprofen",
-          currentStock: 80,
-          suggestedQuantity: 300,
-        },
-      ],
-    },
-    {
-      id: "b2",
-      name: "Marienapotheke München",
-      address: "Marienplatz 2, 80331 München",
-      severity: "watch",
-      drugs: [
-        {
-          id: "d4",
-          name: "Paracetamol",
-          currentStock: 100,
-          suggestedQuantity: 250,
-        },
-        {
-          id: "d5",
-          name: "Doxycycline",
-          currentStock: 30,
-          suggestedQuantity: 120,
-        },
-      ],
-    },
-    {
-      id: "b3",
-      name: "Ratsapotheke Hamburg",
-      address: "Rathausmarkt 1, 20095 Hamburg",
-      severity: "low",
-      drugs: [
-        {
-          id: "d6",
-          name: "Cetirizine",
-          currentStock: 200,
-          suggestedQuantity: 50,
-        },
-      ],
-    },
-  ];
-
-  const [mapBranches, branches] = await Promise.all([
-    geocodeBranches(branchesForMap),
-    geocodeBranches(branchData),
-  ]);
-
-  const mapPoints = mapBranches.map((b) => ({
-    lat: b.lat,
-    lng: b.lng,
-    label: b.name,
-    color: severityConfig[b.severity].markerColor,
-    popup: {
-      name: b.name,
-      address: b.address,
-      severity: b.severity,
-      drugCount: b.drugCount,
-    },
-  }));
+      };
+    });
 
   return (
     <main className="flex flex-col items-center w-full min-h-screen gap-4">
       <SidebarTrigger size="icon-lg" className={"m-2 self-start"} />
-      <AlertsDisplay alerts={alerts} />
+      <AlertsDisplay alerts={visibleAlerts} />
       <MapDisplay points={mapPoints} />
-      <TakeAction branches={branches} />
+      <TakeAction branches={branchData} />
     </main>
   );
 }
