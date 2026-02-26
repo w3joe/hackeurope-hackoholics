@@ -16,10 +16,26 @@ import { Activity, ClipboardList, LayoutDashboard } from "lucide-react";
 import Image from "next/image";
 
 function CVSLogo({ className }: { className?: string }) {
-  return <Image src="/CVS_Logo.svg" alt="CVS" width={32} height={32} className={className} />;
+  return (
+    <Image
+      src="/CVS_Logo.svg"
+      alt="CVS"
+      width={32}
+      height={32}
+      className={className}
+    />
+  );
 }
 function DMLogo({ className }: { className?: string }) {
-  return <Image src="/Dm_Logo.svg" alt="dm" width={32} height={32} className={className} />;
+  return (
+    <Image
+      src="/Dm_Logo.svg"
+      alt="dm"
+      width={32}
+      height={32}
+      className={className}
+    />
+  );
 }
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -65,7 +81,13 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <TeamSwitcher teams={teams} />
+        <Image
+          src={"/VitariskLogo.svg"}
+          alt="Vitarisk Logo"
+          width={300}
+          height={100}
+          className="aspect-3/1 max-h-10 w-fit ml-2"
+        />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -88,7 +110,9 @@ export function AppSidebar() {
         </SidebarGroup>
         <SidebarGroup />
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter>
+        <TeamSwitcher teams={teams} />
+      </SidebarFooter>
     </Sidebar>
   );
 }
